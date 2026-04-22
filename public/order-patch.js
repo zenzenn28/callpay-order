@@ -11,27 +11,33 @@ const MIDTRANS_CLIENT = 'Mid-client-87ffSwFJ7TbDZVeD';
   document.head.appendChild(s);
 })();
 
-// Override confirmViaWA — pakai interval untuk tunggu script.js selesai load
 function applyOverride() {
-  // Inject field WA + voucher ke modal
   injectModalFields();
 
-  // Override fungsi
   window.confirmViaWA = async function() {
     const talent  = window.activeTalent;
-    const svcRaw  = document.getElementById('modal-service')?.value;
-    const durRaw  = document.getElementById('modal-duration')?.value;
+    const svcEl   = document.getElementById('modal-service');
+    const durEl   = document.getElementById('modal-duration');
+    const svcRaw  = svcEl?.value || '';
+    const durRaw  = durEl?.value || '';
     const note    = document.getElementById('modal-note')?.value    || '';
     const custWa  = document.getElementById('modal-cust-wa')?.value?.trim() || '';
     const voucher = document.getElementById('modal-voucher')?.value?.trim()  || '';
 
-    if (!talent || !svcRaw || !durRaw) { alert('Lengkapi pilihan layanan dan durasi!'); return; }
-    if (!custWa) { alert('Masukkan nomor WhatsApp kamu dulu!'); document.getElementById('modal-cust-wa')?.focus(); return; }
+    if (!talent)  { alert('Pilih talent dulu!'); return; }
+    if (!svcRaw)  { alert('Pilih layanan dulu!'); return; }
+    if (!durRaw)  { alert('Pilih durasi dulu!'); return; }
+    if (!custWa)  { alert('Masukkan nomor WhatsApp kamu dulu!'); document.getElementById('modal-cust-wa')?.focus(); return; }
+
     const checked = document.getElementById('admin-fee-check')?.checked;
     if (!checked) { alert('Centang persetujuan biaya admin terlebih dahulu!'); return; }
 
+    // Decode service label dari key
     const svcLabel = window.SVC_KEY_TO_LABEL?.[svcRaw] || svcRaw;
-    const price    = window.PRICES?.[svcLabel]?.[parseInt(durRaw)] || 0;
+    const durInt   = parseInt(durRaw);
+    const price    = window.PRICES?.[svcLabel]?.[durInt] || 0;
+
+    console.log('Order:', { talent: talent.name, svcRaw, svcLabel, durRaw, durInt, price, custWa });
 
     const btn = document.getElementById('modal-wa-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
@@ -45,7 +51,7 @@ function applyOverride() {
           talentName: talent.name,
           talentImg : talent.img || '',
           service   : svcLabel,
-          duration  : parseInt(durRaw),
+          duration  : durInt,
           price,
           custWa,
           note,
@@ -55,6 +61,8 @@ function applyOverride() {
       });
 
       const data = await res.json();
+      console.log('Response:', data);
+
       if (!data.success) {
         alert('Gagal: ' + (data.error || 'Terjadi kesalahan'));
         if (btn) { btn.disabled = false; btn.textContent = 'Lanjut ke Pembayaran'; }
@@ -62,7 +70,7 @@ function applyOverride() {
       }
 
       // Tutup modal
-      const modal = document.getElementById('modal-overlay');
+      const modal = document.getElementById('order-modal');
       if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
 
       const waitUrl = `${API_BASE}/waiting.html` +
@@ -82,6 +90,7 @@ function applyOverride() {
         });
       }
     } catch(e) {
+      console.error('Order error:', e);
       alert('Gagal terhubung ke server: ' + e.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Lanjut ke Pembayaran'; }
     }
@@ -98,8 +107,7 @@ function injectModalFields() {
   waWrap.innerHTML = `
     <label style="display:block;font-size:.72rem;font-weight:800;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">NOMOR WHATSAPP KAMU *</label>
     <input type="tel" id="modal-cust-wa" placeholder="Contoh: 08123456789"
-      style="width:100%;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:600;outline:none"
-      oninput="window.updateWaBtn && window.updateWaBtn()">`;
+      style="width:100%;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:600;outline:none">`;
   noteEl.parentElement?.insertBefore(waWrap, noteEl.parentElement.firstChild);
 
   const vcWrap = document.createElement('div');
@@ -109,7 +117,7 @@ function injectModalFields() {
     <div style="display:flex;gap:8px">
       <input type="text" id="modal-voucher" placeholder="Contoh: VC-ABC12345"
         style="flex:1;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:600;outline:none;text-transform:uppercase">
-      <button onclick="window.checkVoucher && window.checkVoucher()" style="padding:10px 14px;border-radius:10px;background:rgba(255,184,0,.1);border:1px solid rgba(255,184,0,.3);color:#FFB800;font-family:'Nunito',sans-serif;font-weight:800;font-size:.82rem;cursor:pointer;white-space:nowrap">Gunakan</button>
+      <button onclick="window.checkVoucher()" style="padding:10px 14px;border-radius:10px;background:rgba(255,184,0,.1);border:1px solid rgba(255,184,0,.3);color:#FFB800;font-family:'Nunito',sans-serif;font-weight:800;font-size:.82rem;cursor:pointer;white-space:nowrap">Gunakan</button>
     </div>
     <div id="voucher-status" style="font-size:.75rem;font-weight:700;margin-top:4px;display:none"></div>`;
   waWrap.after(vcWrap);
@@ -117,13 +125,6 @@ function injectModalFields() {
   const waBtn = document.getElementById('modal-wa-btn');
   if (waBtn) waBtn.innerHTML = 'Lanjut ke Pembayaran';
 }
-
-window.updateWaBtn = function() {
-  const wa    = document.getElementById('modal-cust-wa')?.value?.trim() || '';
-  const check = document.getElementById('admin-fee-check');
-  const btn   = document.getElementById('modal-wa-btn');
-  if (btn) btn.disabled = !(wa.length >= 9 && (!check || check.checked));
-};
 
 window.checkVoucher = async function() {
   const code = document.getElementById('modal-voucher')?.value?.trim().toUpperCase();
@@ -148,12 +149,15 @@ window.checkVoucher = async function() {
   }
 };
 
-// Jalankan override setelah halaman selesai load
+// Apply override setelah DOM ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', applyOverride);
 } else {
   applyOverride();
 }
 
-// Observer untuk inject field saat modal muncul
-new MutationObserver(() => injectModalFields()).observe(document.body, { childList: true, subtree: true });
+// Observer inject field saat modal muncul
+new MutationObserver(() => {
+  injectModalFields();
+  applyOverride();
+}).observe(document.body, { childList: true, subtree: true });
