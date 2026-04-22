@@ -6,7 +6,7 @@ const MIDTRANS_CLIENT = 'Mid-client-87ffSwFJ7TbDZVeD';
 // Load Midtrans Snap
 (function() {
   const s = document.createElement('script');
-  s.src = 'https://app.midtrans.com/snap/snap.js';
+  s.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
   s.setAttribute('data-client-key', MIDTRANS_CLIENT);
   document.head.appendChild(s);
 })();
