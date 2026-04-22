@@ -1,5 +1,14 @@
 {
   "version": 2,
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ],
   "env": {
     "MIDTRANS_SERVER_KEY": "Mid-server-4vEDUnZj3pbEDbQ09u28L1Lm",
     "MIDTRANS_CLIENT_KEY": "Mid-client-87ffSwFJ7TbDZVeD",
