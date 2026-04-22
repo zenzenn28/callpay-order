@@ -2,7 +2,7 @@
 // Pasang di index.html sebelum </body>:
 // <script src="https://YOUR-VERCEL-URL.vercel.app/order-patch.js"></script>
 
-const API_BASE        = 'https://YOUR-VERCEL-URL.vercel.app'; // Ganti setelah deploy
+const API_BASE = 'https://callpay-order-15no.vercel.app'; 
 const MIDTRANS_CLIENT = 'Mid-client-87ffSwFJ7TbDZVeD';
 
 // Load Midtrans Snap
