@@ -37,8 +37,12 @@ async function sendTwilioNotif(waNumber, service, duration, price, orderId) {
   const sid   = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from  = process.env.TWILIO_WA_NUMBER;
-  const cleanNum = waNumber.toString().replace(/^0/, '').replace(/\D/g, '');
-  const to    = `whatsapp:+62${cleanNum}`;
+  // Normalize nomor WA: hapus 0/62/+62 di depan lalu tambah +62
+  let cleanNum = waNumber.toString().replace(/\D/g, '');
+  if (cleanNum.startsWith('62')) cleanNum = cleanNum.slice(2);
+  if (cleanNum.startsWith('0'))  cleanNum = cleanNum.slice(1);
+  const to = `whatsapp:+62${cleanNum}`;
+  console.log('Sending WA to:', to);
   const body  = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${duration} menit*\n💰 Harga: *Rp ${Number(price).toLocaleString('id-ID')}*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
   const auth  = Buffer.from(`${sid}:${token}`).toString('base64');
   await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
