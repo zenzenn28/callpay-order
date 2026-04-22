@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Menunggu Konfirmasi Talent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Nunito',sans-serif;background:#0A0A15;color:#F0EBF8;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+    .container{width:100%;max-width:420px}
+    .status-title{font-size:.85rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:20px;text-align:center}
+    .status-title.green{color:#3DD68C}
+    .status-title.red{color:#FF5C5C}
+
+    .talent-card{background:#16162A;border:2px solid rgba(249,168,201,.3);border-radius:16px;padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:16px}
+    .talent-img{width:60px;height:60px;border-radius:12px;object-fit:cover;flex-shrink:0}
+    .talent-img-ph{width:60px;height:60px;border-radius:12px;background:#1E1E35;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+    .talent-name{font-size:1.1rem;font-weight:900}
+    .talent-online{font-size:.78rem;font-weight:700;color:#3DD68C;margin-top:2px}
+    .progress-bar{height:10px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-bottom:8px}
+    .progress-fill{height:100%;background:linear-gradient(90deg,#3DD68C,#7FFFD4);border-radius:99px;transition:width .5s linear}
+    .progress-meta{display:flex;justify-content:space-between;font-size:.82rem;font-weight:700;color:rgba(240,235,248,.6)}
+    .timer{font-size:1.3rem;font-weight:900;color:#F0EBF8}
+    .info-box{background:#16162A;border:1px solid rgba(249,168,201,.2);border-radius:14px;padding:18px;margin-top:16px}
+    .info-title{font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#FF5C5C;margin-bottom:14px;text-align:center}
+    .info-item{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start;font-size:.85rem;font-weight:600;line-height:1.5;color:rgba(240,235,248,.8)}
+    .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:6px}
+    .dot.red{background:#FF5C5C}
+    .dot.pink{background:#F9A8C9}
+
+    .result-screen{display:none;text-align:center}
+    .result-icon{font-size:3.5rem;margin-bottom:16px}
+    .result-title{font-size:1.2rem;font-weight:900;margin-bottom:8px}
+    .result-sub{font-size:.85rem;color:rgba(240,235,248,.6);font-weight:600;line-height:1.6;margin-bottom:20px}
+    .voucher-box{background:#1E1E35;border:2px dashed rgba(255,184,0,.4);border-radius:12px;padding:14px 20px;margin-bottom:12px}
+    .voucher-label{font-size:.7rem;font-weight:800;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+    .voucher-code{font-size:1.5rem;font-weight:900;color:#FFB800;letter-spacing:.12em}
+    .voucher-note{font-size:.7rem;color:rgba(240,235,248,.4);font-weight:600;margin-top:6px}
+    .btn{width:100%;padding:13px;border-radius:99px;background:linear-gradient(135deg,#E8628A,#F9A8C9);border:none;color:#fff;font-family:'Nunito',sans-serif;font-weight:800;font-size:.9rem;cursor:pointer;margin-top:8px}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(240,235,248,.6)}
+    .btn-copy{background:rgba(255,184,0,.08);border:1px solid rgba(255,184,0,.3);color:#FFB800;width:auto;padding:8px 20px;font-size:.8rem}
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- PENDING -->
+  <div id="screen-pending">
+    <div class="status-title green">🔔 Notifikasi Order Sudah Dikirim ke Talent</div>
+    <div class="talent-card">
+      <div id="talent-img-wrap"><div class="talent-img-ph">👤</div></div>
+      <div style="flex:1">
+        <div class="talent-name" id="talent-name">-</div>
+        <div class="talent-online">● online</div>
+        <div class="progress-bar" style="margin-top:10px"><div class="progress-fill" id="prog" style="width:100%"></div></div>
+        <div class="progress-meta"><span>Menunggu Konfirmasi Talent</span><span class="timer" id="timer">2:00</span></div>
+      </div>
+    </div>
+    <div class="info-box">
+      <div class="info-title">Silahkan Tunggu Sampai Durasi Habis</div>
+      <div class="info-item"><span class="dot red"></span><span>Jika talent <strong>tidak konfirmasi sampai durasi habis</strong>, talent akan otomatis offline dan kamu akan diberi <strong>kode voucher</strong> yang bisa digunakan untuk order talent lain.</span></div>
+      <div class="info-item"><span class="dot pink"></span><span>Jika talent <strong>menolak ordermu,</strong> kamu juga akan diberi <strong>kode voucher</strong> yang bisa digunakan untuk order talent lain.</span></div>
+      <div class="info-item"><span class="dot pink"></span><span>Jika talent <strong>menerima ordermu,</strong> maka talent akan <strong>menghubungimu melalui WhatsApp</strong> yang kamu cantumkan tadi.</span></div>
+    </div>
+  </div>
+
+  <!-- ACCEPTED -->
+  <div id="screen-accepted" class="result-screen">
+    <div class="result-icon">🎉</div>
+    <div class="status-title green">Order Diterima!</div>
+    <div class="result-title">Talent akan segera menghubungimu</div>
+    <div class="result-sub">Talent akan menghubungimu melalui WhatsApp yang kamu cantumkan. Pastikan HP kamu aktif dan siap menerima pesan.</div>
+    <button class="btn" onclick="goHome()">← Kembali ke Beranda</button>
+  </div>
+
+  <!-- REJECTED / EXPIRED -->
+  <div id="screen-rejected" class="result-screen">
+    <div class="result-icon">😔</div>
+    <div class="status-title red" id="rej-title">Order Ditolak</div>
+    <div class="result-title" id="rej-subtitle">Talent tidak bisa menerima ordermu saat ini</div>
+    <div class="result-sub">Tenang, kamu mendapatkan kode voucher yang bisa digunakan untuk order talent lain dengan layanan dan durasi yang sama.</div>
+    <div class="voucher-box">
+      <div class="voucher-label">Kode Voucher Kamu</div>
+      <div class="voucher-code" id="voucher-code">-</div>
+      <div class="voucher-note">Berlaku untuk layanan & durasi yang sama · Sekali pakai</div>
+    </div>
+    <button class="btn btn-copy" onclick="copyVoucher()">📋 Salin Kode Voucher</button>
+    <button class="btn" onclick="goHome()">← Pilih Talent Lain</button>
+  </div>
+
+</div>
+<script>
+const p       = new URLSearchParams(window.location.search);
+const orderId = p.get('orderId');
+const tName   = p.get('talentName') || '-';
+const tImg    = p.get('talentImg')  || '';
+const homeUrl = p.get('home') || '/';
+
+document.getElementById('talent-name').textContent = tName;
+if (tImg) document.getElementById('talent-img-wrap').innerHTML =
+  `<img class="talent-img" src="${decodeURIComponent(tImg)}" alt="${tName}">`;
+
+const TOTAL = 120;
+let left = TOTAL, timerInt, pollInt;
+
+function fmt(s){ return Math.floor(s/60)+':'+(s%60).toString().padStart(2,'0'); }
+function goHome(){ window.location.href = homeUrl; }
+
+function show(name){
+  ['pending','accepted','rejected'].forEach(s=>{
+    const el=document.getElementById('screen-'+s);
+    if(el) el.style.display = s===name?'block':'none';
+  });
+}
+
+function showVoucher(code, reason){
+  clearInterval(timerInt); clearInterval(pollInt);
+  if(reason==='expired'||reason==='talent_timeout'){
+    document.getElementById('rej-title').textContent='Waktu Habis';
+    document.getElementById('rej-subtitle').textContent='Talent tidak merespons dalam 2 menit';
+  }
+  document.getElementById('voucher-code').textContent = code||'-';
+  show('rejected');
+}
+
+function copyVoucher(){
+  const code = document.getElementById('voucher-code').textContent;
+  navigator.clipboard.writeText(code).then(()=>alert('✅ Kode voucher tersalin!'));
+}
+
+async function checkStatus(){
+  if(!orderId) return;
+  try{
+    const r = await fetch(`/api/order-status?orderId=${orderId}`);
+    const d = await r.json();
+    if(d.status==='accepted'){
+      clearInterval(timerInt); clearInterval(pollInt);
+      show('accepted');
+    } else if(d.status==='rejected'||d.status==='expired'){
+      const r2 = await fetch(`/api/get-voucher?orderId=${orderId}`);
+      const d2 = await r2.json();
+      showVoucher(d2.voucherCode, d.status);
+    }
+  }catch(e){}
+}
+
+timerInt = setInterval(()=>{
+  left--;
+  document.getElementById('timer').textContent = fmt(left);
+  document.getElementById('prog').style.width = (left/TOTAL*100)+'%';
+  if(left<=0){
+    clearInterval(timerInt);
+    fetch('/api/expire-orders').then(()=>setTimeout(checkStatus,1000));
+  }
+},1000);
+
+pollInt = setInterval(checkStatus, 3000);
+checkStatus();
+</script>
+</body>
+</html>
