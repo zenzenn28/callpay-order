@@ -14,8 +14,9 @@ function generateOrderId() {
 
 async function createMidtransTransaction(orderId, amount, service, duration, custWa) {
   const serverKey = process.env.MIDTRANS_SERVER_KEY;
-  const auth      = Buffer.from(serverKey + ':').toString('base64');
-  const baseUrl   = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://YOUR-VERCEL-URL.vercel.app';
+  if (!serverKey) throw new Error('MIDTRANS_SERVER_KEY not set');
+  const auth    = Buffer.from(serverKey + ':').toString('base64');
+  const baseUrl = 'https://callpay-order-15no.vercel.app';
 
   const payload = {
     transaction_details: { order_id: orderId, gross_amount: Number(amount) },
@@ -24,32 +25,48 @@ async function createMidtransTransaction(orderId, amount, service, duration, cus
     callbacks: { finish: `${baseUrl}/waiting.html?orderId=${orderId}` },
   };
 
+  console.log('Midtrans payload:', JSON.stringify(payload));
+
   const res = await fetch('https://app.sandbox.midtrans.com/snap/v1/transactions', {
     method : 'POST',
     headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
     body   : JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error('Midtrans error: ' + await res.text());
-  return res.json();
+
+  const responseText = await res.text();
+  console.log('Midtrans raw response:', responseText);
+
+  if (!res.ok) throw new Error('Midtrans error: ' + responseText);
+  return JSON.parse(responseText);
 }
 
 async function sendTwilioNotif(waNumber, service, duration, price, orderId) {
   const sid   = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from  = process.env.TWILIO_WA_NUMBER;
-  // Normalize nomor WA: hapus 0/62/+62 di depan lalu tambah +62
+
+  if (!sid || !token || !from) throw new Error('Twilio ENV not set');
+
   let cleanNum = waNumber.toString().replace(/\D/g, '');
   if (cleanNum.startsWith('62')) cleanNum = cleanNum.slice(2);
   if (cleanNum.startsWith('0'))  cleanNum = cleanNum.slice(1);
   const to = `whatsapp:+62${cleanNum}`;
-  console.log('Sending WA to:', to);
-  const body  = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${duration} menit*\n💰 Harga: *Rp ${Number(price).toLocaleString('id-ID')}*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
-  const auth  = Buffer.from(`${sid}:${token}`).toString('base64');
-  await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+
+  console.log('Sending WA to:', to, 'from:', from);
+
+  const body = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${duration} menit*\n💰 Harga: *Rp ${Number(price).toLocaleString('id-ID')}*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
+  const auth = Buffer.from(`${sid}:${token}`).toString('base64');
+
+  const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
     method : 'POST',
     headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body   : new URLSearchParams({ From: from, To: to, Body: body }),
   });
+
+  const twilioText = await twilioRes.text();
+  console.log('Twilio response:', twilioText);
+
+  if (!twilioRes.ok) throw new Error('Twilio error: ' + twilioText);
 }
 
 module.exports = async (req, res) => {
@@ -106,7 +123,7 @@ module.exports = async (req, res) => {
       price      : finalPrice, originalPrice: Number(price) || 0,
       custWa     : cleanWa, note: note || '',
       voucherCode: voucherCode || '', useVoucher,
-      status     : 'pending', // langsung pending, Midtrans konfirmasi via webhook
+      status     : 'pending',
       adminParam : adminParam || 'callpay',
       createdAt  : now, expiredAt,
     };
@@ -116,23 +133,44 @@ module.exports = async (req, res) => {
     // Tandai voucher dipakai
     if (voucherData) await fsSet(`vouchers/${voucherData.code}`, { ...voucherData, used: true, usedAt: now, usedOrder: orderId });
 
-    // Kirim notif WA ke talent untuk semua order
+    // Kirim notif WA ke talent
+    let twilioError = null;
     if (talentWa) {
-      try { await sendTwilioNotif(talentWa, service, duration, price, orderId); } catch(e) { console.error('Twilio:', e.message); }
+      try {
+        await sendTwilioNotif(talentWa, service, duration, price, orderId);
+      } catch(e) {
+        twilioError = e.message;
+        console.error('Twilio failed:', e.message);
+      }
+    } else {
+      console.warn('No talentWa found, skipping Twilio');
     }
 
-    // Kalau bayar → buat transaksi Midtrans
-    let midtransToken = null, midtransRedirectUrl = null;
+    // Buat transaksi Midtrans
+    let midtransToken = null, midtransRedirectUrl = null, midtransError = null;
     if (!useVoucher && finalPrice > 0) {
       try {
         const mt = await createMidtransTransaction(orderId, finalPrice, service, duration, cleanWa);
         midtransToken = mt.token;
         midtransRedirectUrl = mt.redirect_url;
         await fsSet(`orders/${orderId}`, { ...orderData, midtransToken, midtransRedirectUrl });
-      } catch(e) { console.error('Midtrans:', e.message); }
+      } catch(e) {
+        midtransError = e.message;
+        console.error('Midtrans failed:', e.message);
+      }
     }
 
-    return res.status(200).json({ success: true, orderId, expiredAt, useVoucher, midtransToken, midtransRedirectUrl, price: finalPrice });
+    return res.status(200).json({
+      success: true,
+      orderId,
+      expiredAt,
+      useVoucher,
+      midtransToken,
+      midtransRedirectUrl,
+      price: finalPrice,
+      // Debug info — bisa dihapus setelah production
+      debug: { midtransError, twilioError, talentWaFound: !!talentWa }
+    });
 
   } catch(e) {
     console.error('Order error:', e);
