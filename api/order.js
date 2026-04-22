@@ -96,7 +96,7 @@ module.exports = async (req, res) => {
       price      : finalPrice, originalPrice: Number(price) || 0,
       custWa     : cleanWa, note: note || '',
       voucherCode: voucherCode || '', useVoucher,
-      status     : useVoucher ? 'pending' : 'waiting_payment',
+      status     : 'pending', // langsung pending, Midtrans konfirmasi via webhook
       adminParam : adminParam || 'callpay',
       createdAt  : now, expiredAt,
     };
@@ -106,8 +106,8 @@ module.exports = async (req, res) => {
     // Tandai voucher dipakai
     if (voucherData) await fsSet(`vouchers/${voucherData.code}`, { ...voucherData, used: true, usedAt: now, usedOrder: orderId });
 
-    // Kalau voucher → langsung notif WA talent
-    if (useVoucher && talentWa) {
+    // Kirim notif WA ke talent untuk semua order
+    if (talentWa) {
       try { await sendTwilioNotif(talentWa, service, duration, price, orderId); } catch(e) { console.error('Twilio:', e.message); }
     }
 
