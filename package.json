@@ -1,0 +1,15 @@
+{
+  "name": "callpay-order",
+  "version": "1.0.0",
+  "description": "CallPay Order System with Twilio & Midtrans",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.9"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

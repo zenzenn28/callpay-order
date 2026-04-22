@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Buat Akun Talent — CallPay Owner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="owner.css?v=11">
+  <style>
+    .form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:28px 32px;max-width:560px}
+    .form-row{margin-bottom:18px}
+    .form-row label{display:block;font-size:.73rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
+    .form-row input,.form-row select,.form-row textarea{width:100%;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:.9rem;font-weight:600;outline:none;transition:border-color .2s;font-family:'Nunito',sans-serif}
+    .form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--gold-mid)}
+    .form-row select option{background:var(--surface2)}
+    .form-row textarea{resize:vertical;min-height:80px}
+    .form-hint{font-size:.75rem;color:var(--muted);font-weight:600;margin-top:5px}
+    .form-divider{border:none;border-top:1px solid var(--border);margin:22px 0}
+    .form-section-title{font-size:.78rem;font-weight:800;color:var(--gold-mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+    .upload-area{border:2px dashed var(--border);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2)}
+    .upload-area:hover{border-color:var(--gold-mid);background:rgba(255,209,102,.04)}
+    .upload-area.has-file{border-color:var(--green);border-style:solid;background:rgba(61,214,140,.04)}
+    .upload-preview{width:80px;height:80px;border-radius:12px;object-fit:cover;object-position:top;margin:0 auto 8px;display:block;border:2px solid var(--gold-mid)}
+    .upload-icon{font-size:2rem;margin-bottom:8px}
+    .upload-label-text{font-size:.82rem;font-weight:700;color:var(--muted)}
+    .upload-filename{font-size:.78rem;color:var(--green);font-weight:700;margin-top:4px}
+    .services-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .svc-check{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .2s;user-select:none}
+    .svc-check:hover{border-color:var(--gold-mid)}
+    .svc-check.active{border-color:var(--gold-mid);background:rgba(255,209,102,.08)}
+    .svc-check-dot{width:16px;height:16px;border-radius:4px;border:2px solid var(--border);flex-shrink:0;transition:all .2s;display:flex;align-items:center;justify-content:center}
+    .svc-check.active .svc-check-dot{background:var(--gold-mid);border-color:var(--gold-mid)}
+    .svc-check-dot::after{content:'✓';font-size:.65rem;font-weight:900;color:#1A1108;display:none}
+    .svc-check.active .svc-check-dot::after{display:block}
+    .svc-check-label{font-size:.82rem;font-weight:700}
+    .progress-wrap{display:none;margin-top:10px}
+    .progress-track{height:6px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-bottom:6px}
+    .progress-fill{height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,var(--gold-mid),var(--gold));transition:width .3s}
+    .progress-text{font-size:.75rem;color:var(--muted);font-weight:600}
+    .account-list{margin-top:32px;max-width:560px}
+    .account-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;gap:12px;flex-wrap:wrap;transition:border-color .2s}
+    .account-row:hover{border-color:var(--border-gd)}
+    .acc-name{font-weight:800;font-size:.92rem}
+    .acc-user{font-size:.78rem;color:var(--muted);font-weight:600;margin-top:2px}
+    .acc-actions{display:flex;gap:8px}
+    .btn-danger{background:rgba(255,92,92,.1);color:var(--red);border:1px solid rgba(255,92,92,.25);padding:5px 14px;border-radius:99px;font-size:.75rem;font-weight:800;cursor:pointer;transition:all .2s}
+    .btn-danger:hover{background:rgba(255,92,92,.2)}
+    .badge-gender{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.7rem;font-weight:800}
+    .bg-f{background:rgba(249,168,201,.1);color:var(--pink);border:1px solid var(--border-pk)}
+    .bg-m{background:rgba(168,213,249,.1);color:var(--blue);border:1px solid var(--border-bl)}
+    @media(max-width:600px){
+      .form-card{padding:20px 16px}
+      .services-grid{grid-template-columns:1fr}
+      .form-card > div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important}
+      .account-list{margin-top:24px}
+    }
+  </style>
+<script>
+function toggleSidebar(){const sb=document.querySelector('.sidebar'),ov=document.getElementById('sidebar-overlay'),btn=document.getElementById('hamburger-btn');if(!sb||!ov||!btn)return;const open=sb.classList.toggle('open');ov.classList.toggle('open',open);btn.textContent=open?'✕':'☰';}
+function closeSidebar(){const sb=document.querySelector('.sidebar'),ov=document.getElementById('sidebar-overlay'),btn=document.getElementById('hamburger-btn');if(!sb||!ov||!btn)return;sb.classList.remove('open');ov.classList.remove('open');btn.textContent='☰';}
+</script>
+<script>
+if (sessionStorage.getItem('cp_owner') !== '1') {
+  document.addEventListener('DOMContentLoaded', function() { window.location.href = 'index.html'; });
+}
+</script>
+</head>
+<body>
+<div class="app">
+  <div class="mobile-topbar"><span class="mobile-logo">CallPay</span><button class="hamburger" onclick="toggleSidebar()" id="hamburger-btn">☰</button></div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-text">CallPay</div><div class="sidebar-logo-sub">👑 Owner Panel</div></div>
+    <nav class="sidebar-nav">
+      <a href="index.html"         class="nav-item"><span class="nav-icon">📊</span>Dashboard</a>
+      <a href="create-talent.html" class="nav-item active"><span class="nav-icon">➕</span>Buat Akun Talent</a>
+      <a href="review.html"        class="nav-item"><span class="nav-icon">🔐</span>Kelola Akses Layanan</a>
+      <a href="services.html"      class="nav-item"><span class="nav-icon">🎯</span>Kelola Layanan</a>
+      <a href="pricelist.html"     class="nav-item"><span class="nav-icon">💰</span>Kelola Pricelist</a>
+      <a href="settings.html"      class="nav-item"><span class="nav-icon">⚙️</span>Pengaturan</a>
+      <a href="../index.html"      class="nav-item" id="back-web"><span class="nav-icon">🌐</span>Lihat Website</a>
+    </nav>
+    <div class="sidebar-footer"><button class="logout-btn" id="logout-btn">Logout →</button></div>
+  </aside>
+  <main class="main">
+    <div class="page-header">
+      <h1>Buat Akun Talent ➕</h1>
+      <p>Isi lengkap data talent — langsung aktif di website</p>
+    </div>
+
+    <div class="form-card">
+      <div class="form-section-title">👤 Info Akun</div>
+      <div class="form-row">
+        <label>Nama Talent *</label>
+        <input type="text" id="f-name" placeholder="Contoh: Nadia">
+        <div class="form-hint">Nama akan jadi username (huruf kecil, tanpa spasi)</div>
+      </div>
+      <div class="form-row">
+        <label>Password *</label>
+        <input type="text" id="f-pass" placeholder="Buat password untuk talent">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-row" style="margin-bottom:0">
+          <label>Gender *</label>
+          <select id="f-gender">
+            <option value="">— Pilih —</option>
+            <option value="female">🌸 Wanita</option>
+            <option value="male">💙 Pria</option>
+          </select>
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label>Umur *</label>
+          <input type="number" id="f-age" placeholder="21" min="18" max="35">
+        </div>
+      </div>
+
+      <hr class="form-divider">
+      <div class="form-section-title">🌟 Profil Talent</div>
+
+      <div class="form-row">
+        <label>Foto Profil *</label>
+        <div class="upload-area" id="photo-area" onclick="document.getElementById('f-photo').click()">
+          <input type="file" id="f-photo" accept="image/jpeg,image/png,image/webp" onchange="previewPhoto(this)" style="display:none">
+          <div id="photo-preview-wrap">
+            <div class="upload-icon">📷</div>
+            <div class="upload-label-text">Klik untuk pilih foto (JPG/PNG)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Bio / Deskripsi</label>
+        <textarea id="f-bio" placeholder="Tulis bio singkat talent..." maxlength="120"></textarea>
+      </div>
+      <div class="form-row">
+        <label>Nomor WhatsApp Talent *</label>
+        <input type="tel" id="f-wa" placeholder="Contoh: 08123456789">
+        <small style="color:var(--muted);font-size:.72rem;font-weight:600">Digunakan untuk menerima notifikasi order masuk</small>
+        <div class="form-hint"><span id="bio-count">0</span>/120 karakter</div>
+      </div>
+
+      <div class="form-row">
+        <label>Layanan * (pilih minimal 1)</label>
+        <div class="services-grid">
+          <div class="svc-check" onclick="toggleService(this,'Temen Call')">
+            <div class="svc-check-dot"></div>
+            <span class="svc-check-label">📞 Temen Call</span>
+          </div>
+          <div class="svc-check" onclick="toggleService(this,'Sleepcall')">
+            <div class="svc-check-dot"></div>
+            <span class="svc-check-label">🌙 Sleepcall</span>
+          </div>
+          <div class="svc-check" onclick="toggleService(this,'Temen Curhat')">
+            <div class="svc-check-dot"></div>
+            <span class="svc-check-label">🫂 Temen Curhat</span>
+          </div>
+          <div class="svc-check" onclick="toggleService(this,'Pacar Virtual')">
+            <div class="svc-check-dot"></div>
+            <span class="svc-check-label">💕 Pacar Virtual</span>
+          </div>
+          <div class="svc-check" onclick="toggleService(this,'Video Call')">
+            <div class="svc-check-dot"></div>
+            <span class="svc-check-label">📹 Video Call</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Sample Suara (MP3/WAV, opsional)</label>
+        <div class="upload-area" id="audio-area" onclick="document.getElementById('f-audio').click()">
+          <input type="file" id="f-audio" accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg" onchange="previewAudio(this)" style="display:none">
+          <div class="upload-icon">🎵</div>
+          <div class="upload-label-text" id="audio-label-text">Klik untuk pilih file audio</div>
+          <div class="upload-filename" id="audio-filename"></div>
+        </div>
+        <div id="audio-player-wrap" style="display:none;margin-top:10px">
+          <audio id="audio-preview" controls style="width:100%;height:32px"></audio>
+        </div>
+      </div>
+
+      <div class="progress-wrap" id="upload-progress">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-text" id="progress-text">Mengupload...</div>
+      </div>
+
+      <p id="form-err" style="color:var(--red);font-size:.82rem;font-weight:700;display:none;margin-bottom:12px"></p>
+      <button class="btn btn-gold" id="create-btn" style="width:100%;margin-top:8px;padding:13px;font-size:.95rem">✨ Buat Akun Talent</button>
+    </div>
+
+    <div class="account-list">
+      <h3 style="font-size:1rem;font-weight:900;margin-bottom:14px;color:var(--muted)">Akun Talent Terdaftar</h3>
+      <div id="accounts-list"><p style="color:var(--muted);font-size:.85rem">Memuat data...</p></div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { DB } from '../admin/data.js?v=11';
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js';
+import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc } from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js';
+
+const FIREBASE_CONFIG = {
+  apiKey:'AIzaSyBLPe_yx28LyefI856Ysxz3YEPnwA0ENFU',
+  authDomain:'callpay-28a28.firebaseapp.com',
+  projectId:'callpay-28a28',
+  storageBucket:'callpay-28a28.firebasestorage.app',
+  messagingSenderId:'44722427776',
+  appId:'1:44722427776:web:29d1a297746cd83d685365'
+};
+const CLOUDINARY_CLOUD  = 'dnbjw43hp';
+const CLOUDINARY_PRESET = 'callpay_audio';
+
+const _app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+const _db  = getFirestore(_app);
+
+let _selectedServices = [];
+let _photoFile = null;
+let _audioFile = null;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show';
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+window.previewPhoto = function(input) {
+  const file = input.files[0]; if (!file) return;
+  _photoFile = file;
+  const url = URL.createObjectURL(file);
+  document.getElementById('photo-preview-wrap').innerHTML =
+    `<img class="upload-preview" src="${url}"><div class="upload-filename">✅ ${file.name}</div>`;
+  document.getElementById('photo-area').classList.add('has-file');
+};
+
+window.previewAudio = function(input) {
+  const file = input.files[0]; if (!file) return;
+  _audioFile = file;
+  document.getElementById('audio-filename').textContent = '✅ ' + file.name;
+  document.getElementById('audio-label-text').textContent = 'File terpilih:';
+  document.getElementById('audio-area').classList.add('has-file');
+  document.getElementById('audio-preview').src = URL.createObjectURL(file);
+  document.getElementById('audio-player-wrap').style.display = 'block';
+};
+
+window.toggleService = function(el, svc) {
+  el.classList.toggle('active');
+  if (el.classList.contains('active')) {
+    if (!_selectedServices.includes(svc)) _selectedServices.push(svc);
+  } else {
+    _selectedServices = _selectedServices.filter(s => s !== svc);
+  }
+};
+
+document.getElementById('f-bio').addEventListener('input', function() {
+  document.getElementById('bio-count').textContent = this.value.length;
+});
+document.getElementById('f-name').addEventListener('input', function() {
+  this.value = this.value.replace(/\s+/g, '');
+});
+
+async function uploadCloudinary(file, type) {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', CLOUDINARY_PRESET);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${type}/upload`);
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = Math.round(e.loaded/e.total*100);
+        document.getElementById('progress-fill').style.width = pct+'%';
+        document.getElementById('progress-text').textContent = 'Mengupload... '+pct+'%';
+      }
+    };
+    xhr.onload = () => xhr.status===200 ? resolve(JSON.parse(xhr.responseText).secure_url) : reject(new Error('Upload gagal'));
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.send(fd);
+  });
+}
+
+document.getElementById('create-btn').onclick = async () => {
+  const name   = document.getElementById('f-name').value.trim();
+  const pass   = document.getElementById('f-pass').value.trim();
+  const gender = document.getElementById('f-gender').value;
+  const age    = parseInt(document.getElementById('f-age').value);
+  const bio    = document.getElementById('f-bio').value.trim();
+  const errEl  = document.getElementById('form-err');
+  errEl.style.display = 'none';
+
+  if (!name||!pass||!gender||!age) { errEl.textContent='Nama, password, gender, dan umur wajib diisi.'; errEl.style.display='block'; return; }
+  if (age<18||age>35)              { errEl.textContent='Umur harus antara 18–35 tahun.'; errEl.style.display='block'; return; }
+  if (!_photoFile)                 { errEl.textContent='Foto profil wajib diupload.'; errEl.style.display='block'; return; }
+  if (!_selectedServices.length)  { errEl.textContent='Pilih minimal 1 layanan.'; errEl.style.display='block'; return; }
+
+  const docId = name.toLowerCase();
+  const btn   = document.getElementById('create-btn');
+  btn.disabled = true; btn.textContent = 'Memproses...';
+
+  try {
+    const existing = await getDoc(doc(_db, 'talents', docId));
+    if (existing.exists()) {
+      errEl.textContent = `Akun "${docId}" sudah ada!`; errEl.style.display='block';
+      btn.disabled=false; btn.textContent='✨ Buat Akun Talent'; return;
+    }
+
+    document.getElementById('upload-progress').style.display = 'block';
+    document.getElementById('progress-text').textContent = 'Mengupload foto...';
+    const imgUrl = await uploadCloudinary(_photoFile, 'image');
+
+    let audioUrl = '';
+    if (_audioFile) {
+      document.getElementById('progress-fill').style.width = '0%';
+      document.getElementById('progress-text').textContent = 'Mengupload audio...';
+      audioUrl = await uploadCloudinary(_audioFile, 'video');
+    }
+
+    document.getElementById('progress-text').textContent = 'Menyimpan ke database...';
+    document.getElementById('progress-fill').style.width = '95%';
+
+    await setDoc(doc(_db, 'talents', docId), {
+      username:docId, password:pass, name, gender, age, bio,
+      services:_selectedServices, img:imgUrl, audio:audioUrl,
+      online:false, active:true, status:'approved', points:100,
+      createdAt:new Date().toISOString(),
+    });
+
+    document.getElementById('progress-fill').style.width = '100%';
+    document.getElementById('progress-text').textContent = '✅ Berhasil!';
+    setTimeout(() => { document.getElementById('upload-progress').style.display='none'; document.getElementById('progress-fill').style.width='0%'; }, 2000);
+
+    // Reset form
+    ['f-name','f-pass','f-age','f-bio'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('f-gender').value = '';
+    document.getElementById('bio-count').textContent = '0';
+    document.getElementById('photo-preview-wrap').innerHTML = '<div class="upload-icon">📷</div><div class="upload-label-text">Klik untuk pilih foto (JPG/PNG)</div>';
+    document.getElementById('photo-area').classList.remove('has-file');
+    document.getElementById('audio-filename').textContent = '';
+    document.getElementById('audio-label-text').textContent = 'Klik untuk pilih file audio';
+    document.getElementById('audio-area').classList.remove('has-file');
+    document.getElementById('audio-player-wrap').style.display = 'none';
+    document.getElementById('f-photo').value = '';
+    document.getElementById('f-audio').value = '';
+    document.querySelectorAll('.svc-check').forEach(el => el.classList.remove('active'));
+    _selectedServices=[]; _photoFile=null; _audioFile=null;
+    toast('✅ Talent "'+name+'" berhasil dibuat dan langsung aktif di website!');
+
+  } catch(e) {
+    errEl.textContent = 'Gagal: '+e.message; errEl.style.display='block';
+    document.getElementById('upload-progress').style.display='none';
+  }
+  btn.disabled=false; btn.textContent='✨ Buat Akun Talent';
+};
+
+window.deleteAccount = async (docId) => {
+  if (!confirm(`Hapus akun talent "${docId}"? Data akan hilang permanen!`)) return;
+  await deleteDoc(doc(_db, 'talents', docId));
+  toast('🗑️ Akun dihapus');
+};
+
+onSnapshot(collection(_db, 'talents'), snap => {
+  const list = [];
+  snap.forEach(d => list.push({id:d.id,...d.data()}));
+  list.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  if (!list.length) { document.getElementById('accounts-list').innerHTML='<p style="color:var(--muted);font-size:.85rem">Belum ada akun talent.</p>'; return; }
+  document.getElementById('accounts-list').innerHTML = list.map(t => {
+    const sc = t.status==='approved'?'var(--green)':t.status==='pending'?'var(--yellow)':t.status==='rejected'?'var(--red)':'var(--muted)';
+    const sl = t.status==='approved'?'✅ Aktif':t.status==='pending'?'⏳ Review':t.status==='rejected'?'❌ Ditolak':'📝 Draft';
+    return `<div class="account-row">
+      <div style="display:flex;align-items:center;gap:12px;flex:1">
+        ${t.img?`<img src="${t.img}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;object-position:top">`:`<div style="width:44px;height:44px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.2rem">👤</div>`}
+        <div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+            <span class="acc-name">${t.name||t.id}</span>
+            <span class="badge-gender ${t.gender==='female'?'bg-f':'bg-m'}">${t.gender==='female'?'Wanita':'Pria'}</span>
+            <span style="color:${sc};font-size:.72rem;font-weight:800">${sl}</span>
+          </div>
+          <div class="acc-user">@${t.id} · ${t.age||'-'} thn · ${(t.services||[]).join(', ')||'-'}</div>
+        </div>
+      </div>
+      <div class="acc-actions"><button class="btn-danger" onclick="deleteAccount('${t.id}')">Hapus</button></div>
+    </div>`;
+  }).join('');
+});
+
+document.getElementById('logout-btn').onclick = () => { sessionStorage.removeItem('cp_owner'); window.location.href='index.html'; };
+document.getElementById('back-web').addEventListener('click', (e) => { e.preventDefault(); window.open('../index.html','_blank'); });
+document.addEventListener('DOMContentLoaded', async () => {
+  if (sessionStorage.getItem('cp_owner') !== '1') { window.location.href='index.html'; return; }
+  document.querySelectorAll('.nav-item').forEach(a => a.addEventListener('click', () => { if(window.innerWidth<=768) closeSidebar(); }));
+});
+</script>
+</body>
+</html>
