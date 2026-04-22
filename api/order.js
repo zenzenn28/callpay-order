@@ -24,7 +24,7 @@ async function createMidtransTransaction(orderId, amount, service, duration, cus
     callbacks: { finish: `${baseUrl}/waiting.html?orderId=${orderId}` },
   };
 
-  const res = await fetch('https://app.midtrans.com/snap/v1/transactions', {
+  const res = await fetch('https://app.sandbox.midtrans.com/snap/v1/transactions', {
     method : 'POST',
     headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
     body   : JSON.stringify(payload),
