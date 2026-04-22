@@ -84,9 +84,15 @@ module.exports = async (req, res) => {
     // Ambil WA talent
     let talentWa = null;
     try {
+      console.log('Fetching talent:', talentId);
       const tSnap = await fsGet(`talents/${talentId}`);
-      if (tSnap && tSnap.fields) talentWa = fromFirestore(tSnap.fields).waNumber || null;
-    } catch(e) {}
+      console.log('Talent snap exists:', !!tSnap?.fields);
+      if (tSnap && tSnap.fields) {
+        const tData = fromFirestore(tSnap.fields);
+        talentWa = tData.waNumber || null;
+        console.log('waNumber found:', talentWa);
+      }
+    } catch(e) { console.error('Fetch talent error:', e.message); }
 
     const orderId   = generateOrderId();
     const now       = new Date().toISOString();
