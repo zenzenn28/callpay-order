@@ -101,7 +101,7 @@ if (tImg) document.getElementById('talent-img-wrap').innerHTML =
   `<img class="talent-img" src="${decodeURIComponent(tImg)}" alt="${tName}">`;
 
 const TOTAL = 120;
-let left = TOTAL, timerInt, pollInt;
+let left = TOTAL, timerInt, pollInt, _expiredAt = null;
 
 function fmt(s){ return Math.floor(s/60)+':'+(s%60).toString().padStart(2,'0'); }
 function goHome(){ window.location.href = homeUrl; }
@@ -128,34 +128,52 @@ function copyVoucher(){
   navigator.clipboard.writeText(code).then(()=>alert('✅ Kode voucher tersalin!'));
 }
 
+function startTimer(expiredAt){
+  _expiredAt = new Date(expiredAt);
+  clearInterval(timerInt);
+  timerInt = setInterval(()=>{
+    const now  = new Date();
+    const sLeft = Math.max(0, Math.floor((_expiredAt - now) / 1000));
+    document.getElementById('timer').textContent = fmt(sLeft);
+    document.getElementById('prog').style.width = (sLeft/TOTAL*100)+'%';
+    if(sLeft <= 0){
+      clearInterval(timerInt);
+      // Panggil expire-orders lalu cek status
+      fetch(`${BASE}/api/expire-orders`)
+        .then(() => setTimeout(checkStatus, 1500))
+        .catch(() => setTimeout(checkStatus, 1500));
+    }
+  }, 500);
+}
+
+const BASE = 'https://callpay-order-15no.vercel.app';
+
 async function checkStatus(){
   if(!orderId) return;
   try{
-    const r = await fetch(`/api/order-status?orderId=${orderId}`);
+    const r = await fetch(`${BASE}/api/order-status?orderId=${orderId}`);
     const d = await r.json();
+
+    // Init timer dari expiredAt Firestore (bukan dari URL)
+    if(d.expiredAt && !_expiredAt){
+      startTimer(d.expiredAt);
+    }
+
     if(d.status==='accepted'){
       clearInterval(timerInt); clearInterval(pollInt);
       show('accepted');
     } else if(d.status==='rejected'||d.status==='expired'){
-      const r2 = await fetch(`/api/get-voucher?orderId=${orderId}`);
+      clearInterval(timerInt); clearInterval(pollInt);
+      // Ambil voucher
+      const r2 = await fetch(`${BASE}/api/get-voucher?orderId=${orderId}`);
       const d2 = await r2.json();
       showVoucher(d2.voucherCode, d.status);
     }
-  }catch(e){}
+  }catch(e){ console.error('checkStatus error:', e); }
 }
 
-timerInt = setInterval(()=>{
-  left--;
-  document.getElementById('timer').textContent = fmt(left);
-  document.getElementById('prog').style.width = (left/TOTAL*100)+'%';
-  if(left<=0){
-    clearInterval(timerInt);
-    fetch('/api/expire-orders').then(()=>setTimeout(checkStatus,1000));
-  }
-},1000);
-
 pollInt = setInterval(checkStatus, 3000);
-checkStatus();
+checkStatus(); // Cek langsung — timer akan diinit dari response Firestore
 </script>
 </body>
 </html>
