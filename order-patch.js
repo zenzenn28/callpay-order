@@ -1,12 +1,12 @@
 // order-patch.js - Override confirmViaWA dengan sistem order baru + Midtrans
 
 const API_BASE        = 'https://callpay-order-15no.vercel.app';
-const MIDTRANS_CLIENT = 'Mid-client-87ffSwFJ7TbDZVeD';
+const MIDTRANS_CLIENT = 'Mid-client-Endj0wHvJambaZCs';
 
 // Load Midtrans Snap
 (function() {
   const s = document.createElement('script');
-  s.src = 'https://app.midtrans.com/snap/snap.js';
+  s.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
   s.setAttribute('data-client-key', MIDTRANS_CLIENT);
   document.head.appendChild(s);
 })();
