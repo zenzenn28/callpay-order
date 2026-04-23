@@ -216,9 +216,22 @@ async function checkStatus(){
   } catch(e){ console.error('checkStatus error:', e); }
 }
 
-// Polling setiap 3 detik (hemat quota Firestore)
-pollInt = setInterval(checkStatus, 3000);
+// Cek sekali langsung saat load
 checkStatus();
+
+// Polling setiap 15 detik — hemat Firestore quota
+// Auto stop setelah 5 menit (20 × 15 detik)
+let pollCount = 0;
+const MAX_POLLS = 20;
+pollInt = setInterval(() => {
+  pollCount++;
+  if (pollCount >= MAX_POLLS) {
+    clearInterval(pollInt);
+    console.log('Polling stopped after 5 minutes');
+    return;
+  }
+  checkStatus();
+}, 15000);
 </script>
 </body>
 </html>
