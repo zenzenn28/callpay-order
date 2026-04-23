@@ -1,13 +1,6 @@
 // api/order.js - Buat order baru + Midtrans payment
 const { fsGet, fsSet, fromFirestore } = require('../lib/firebase');
 
-function generateVoucher() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'VC-';
-  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  return code;
-}
-
 function generateOrderId() {
   return 'ORD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
 }
@@ -25,8 +18,6 @@ async function createMidtransTransaction(orderId, amount, service, duration, cus
     callbacks: { finish: `${baseUrl}/waiting.html?orderId=${orderId}` },
   };
 
-  console.log('Midtrans payload:', JSON.stringify(payload));
-
   const res = await fetch('https://app.sandbox.midtrans.com/snap/v1/transactions', {
     method : 'POST',
     headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
@@ -35,12 +26,11 @@ async function createMidtransTransaction(orderId, amount, service, duration, cus
 
   const responseText = await res.text();
   console.log('Midtrans raw response:', responseText);
-
   if (!res.ok) throw new Error('Midtrans error: ' + responseText);
   return JSON.parse(responseText);
 }
 
-async function sendTwilioNotif(waNumber, service, duration, price, orderId) {
+async function sendTwilioNotif(waNumber, service, duration, price, orderId, custWa) {
   const sid   = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from  = process.env.TWILIO_WA_NUMBER;
@@ -54,7 +44,7 @@ async function sendTwilioNotif(waNumber, service, duration, price, orderId) {
 
   console.log('Sending WA to:', to, 'from:', from);
 
-  const body = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${duration} menit*\n💰 Harga: *Rp ${Number(price).toLocaleString('id-ID')}*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
+  const body = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${duration} menit*\n💰 Harga: *Rp ${Number(price).toLocaleString('id-ID')}*\n📱 WA Customer: *+62${custWa.replace(/^0/, '')}*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
 
   const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
@@ -65,7 +55,6 @@ async function sendTwilioNotif(waNumber, service, duration, price, orderId) {
 
   const twilioText = await twilioRes.text();
   console.log('Twilio response:', twilioText);
-
   if (!twilioRes.ok) throw new Error('Twilio error: ' + twilioText);
 }
 
@@ -82,6 +71,9 @@ module.exports = async (req, res) => {
 
     const cleanWa = custWa.replace(/\D/g, '');
     if (cleanWa.length < 9) return res.status(400).json({ error: 'Nomor WA tidak valid' });
+
+    // Normalize talentId ke lowercase agar cocok dengan Firestore
+    const talentIdClean = talentId.toString().toLowerCase().trim();
 
     // Cek voucher
     let voucherData = null, finalPrice = Number(price) || 0, useVoucher = false;
@@ -101,8 +93,8 @@ module.exports = async (req, res) => {
     // Ambil WA talent
     let talentWa = null;
     try {
-      console.log('Fetching talent:', talentId);
-      const tSnap = await fsGet(`talents/${talentId}`);
+      console.log('Fetching talent:', talentIdClean);
+      const tSnap = await fsGet(`talents/${talentIdClean}`);
       console.log('Talent snap exists:', !!tSnap?.fields);
       if (tSnap && tSnap.fields) {
         const tData = fromFirestore(tSnap.fields);
@@ -113,40 +105,45 @@ module.exports = async (req, res) => {
 
     const orderId   = generateOrderId();
     const now       = new Date().toISOString();
+    // expiredAt dihitung dari SETELAH pembayaran — di-set ulang oleh webhook Midtrans
+    // Untuk voucher/gratis langsung set 2 menit dari sekarang
     const expiredAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
 
     const orderData = {
-      orderId, talentId,
-      talentName : talentName || talentId,
+      orderId,
+      talentId   : talentIdClean,
+      talentName : talentName || talentIdClean,
       talentImg  : talentImg  || '',
-      service, duration: String(duration),
-      price      : finalPrice, originalPrice: Number(price) || 0,
-      custWa     : cleanWa, note: note || '',
-      voucherCode: voucherCode || '', useVoucher,
-      status     : 'pending',
+      service,
+      duration   : String(duration),
+      price      : finalPrice,
+      originalPrice: Number(price) || 0,
+      custWa     : cleanWa,
+      note       : note || '',
+      voucherCode: voucherCode || '',
+      useVoucher,
+      // Status 'waiting_payment' dulu, jadi timer belum jalan
+      // Akan berubah jadi 'pending' setelah Midtrans webhook konfirmasi
+      status     : useVoucher ? 'pending' : 'waiting_payment',
       adminParam : adminParam || 'callpay',
-      createdAt  : now, expiredAt,
+      createdAt  : now,
+      expiredAt  : useVoucher ? expiredAt : null,
+      talentWa   : talentWa || '',
     };
 
     await fsSet(`orders/${orderId}`, orderData);
 
     // Tandai voucher dipakai
-    if (voucherData) await fsSet(`vouchers/${voucherData.code}`, { ...voucherData, used: true, usedAt: now, usedOrder: orderId });
-
-    // Kirim notif WA ke talent
-    let twilioError = null;
-    if (talentWa) {
-      try {
-        await sendTwilioNotif(talentWa, service, duration, price, orderId);
-      } catch(e) {
-        twilioError = e.message;
-        console.error('Twilio failed:', e.message);
+    if (voucherData) {
+      await fsSet(`vouchers/${voucherData.code}`, { ...voucherData, used: true, usedAt: now, usedOrder: orderId });
+      // Kirim notif WA langsung kalau pakai voucher (gratis)
+      if (talentWa) {
+        try { await sendTwilioNotif(talentWa, service, duration, price, orderId, cleanWa); }
+        catch(e) { console.error('Twilio failed:', e.message); }
       }
-    } else {
-      console.warn('No talentWa found, skipping Twilio');
     }
 
-    // Buat transaksi Midtrans
+    // Buat transaksi Midtrans (kalau bukan voucher)
     let midtransToken = null, midtransRedirectUrl = null, midtransError = null;
     if (!useVoucher && finalPrice > 0) {
       try {
@@ -163,13 +160,12 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       success: true,
       orderId,
-      expiredAt,
+      expiredAt: orderData.expiredAt,
       useVoucher,
       midtransToken,
       midtransRedirectUrl,
       price: finalPrice,
-      // Debug info — bisa dihapus setelah production
-      debug: { midtransError, twilioError, talentWaFound: !!talentWa }
+      debug: { midtransError, talentWaFound: !!talentWa }
     });
 
   } catch(e) {
