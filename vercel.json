@@ -1,16 +1,9 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ],
-  "env": {
-    "MIDTRANS_SERVER_KEY": "Mid-server-4vEDUnZj3pbEDbQ09u28L1Lm",
-    "MIDTRANS_CLIENT_KEY": "Mid-client-87ffSwFJ7TbDZVeD",
-    "TWILIO_ACCOUNT_SID": "AC135168779ecd4ccfc8f7edfc50bef898",
-    "TWILIO_AUTH_TOKEN": "ad3f968db6e3ee14b7419894c98634d0",
-    "TWILIO_WA_NUMBER": "whatsapp:+14155238886",
-    "FIREBASE_PROJECT_ID": "callpay-28a28",
-    "FIREBASE_API_KEY": "AIzaSyBLPe_yx28LyefI856Ysxz3YEPnwA0ENFU"
-  }
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
+    { "src": "/(.*\\.html)", "dest": "/$1" },
+    { "src": "/(.*\\.js)", "dest": "/$1" },
+    { "src": "/", "dest": "/waiting.html" }
+  ]
 }
