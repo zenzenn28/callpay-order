@@ -55,7 +55,7 @@ async function sendTwilioNotif(waNumber, service, duration, price, orderId, cust
   console.log('Sending WA to:', to, 'from:', from);
 
   const last4 = custWa.replace(/\D/g, '').slice(-4);
-  const body = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${formatDuration(duration)}*\n💰 Harga: *Rp ${Number(price).toLocaleString('id-ID')}*\n📱 WA Customer: *xxxx-xxxx-${last4}*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
+  const body = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${duration} menit*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
 
   const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
