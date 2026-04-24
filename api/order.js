@@ -30,6 +30,16 @@ async function createMidtransTransaction(orderId, amount, service, duration, cus
   return JSON.parse(responseText);
 }
 
+
+function formatDuration(minutes) {
+  const m = Number(minutes);
+  if (m < 60) return m + ' menit';
+  const jam = m / 60;
+  // Format jam: kalau bulat tampilkan angka bulat, kalau tidak bulatkan ke 1 desimal
+  const jamStr = Number.isInteger(jam) ? jam.toString() : jam.toFixed(1).replace('.', ',');
+  return jamStr + ' jam';
+}
+
 async function sendTwilioNotif(waNumber, service, duration, price, orderId, custWa) {
   const sid   = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
@@ -44,7 +54,8 @@ async function sendTwilioNotif(waNumber, service, duration, price, orderId, cust
 
   console.log('Sending WA to:', to, 'from:', from);
 
-  const body = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${duration} menit*\n💰 Harga: *Rp ${Number(price).toLocaleString('id-ID')}*\n📱 WA Customer: *+62${custWa.replace(/^0/, '')}*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
+  const last4 = custWa.replace(/\D/g, '').slice(-4);
+  const body = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${formatDuration(duration)}*\n💰 Harga: *Rp ${Number(price).toLocaleString('id-ID')}*\n📱 WA Customer: *xxxx-xxxx-${last4}*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
 
   const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
