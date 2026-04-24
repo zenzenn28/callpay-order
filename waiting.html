@@ -261,6 +261,9 @@ async function autoConfirmPayment() {
   }
 }
 
+// Cleanup order lama saat halaman load (fire and forget)
+fetch(`${BASE}/api/expire-orders`).catch(()=>{});
+
 // Cek sekali langsung saat load
 checkStatus();
 // Coba konfirmasi pembayaran kalau dari redirect Midtrans
