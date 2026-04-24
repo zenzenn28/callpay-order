@@ -1,11 +1,23 @@
-// api/expire-orders.js - Auto expire + cleanup order lama
-const { fsSet, fsDelete, fromFirestore } = require('../lib/firebase');
+// api/expire-orders.js - Auto expire + cleanup order lama + auto offline talent
+const { fsSet, fsGet, fsDelete, fromFirestore } = require('../lib/firebase');
 
 function generateVoucher() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'VC-';
   for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+}
+
+async function setTalentOnline(talentId, online) {
+  try {
+    const snap = await fsGet(`talents/${talentId}`);
+    if (!snap || !snap.fields) return;
+    const talent = fromFirestore(snap.fields);
+    await fsSet(`talents/${talentId}`, { ...talent, online });
+    console.log(`Talent ${talentId} set ${online ? 'online' : 'offline'}`);
+  } catch(e) {
+    console.error('Set talent online error:', e.message);
+  }
 }
 
 module.exports = async (req, res) => {
@@ -15,16 +27,13 @@ module.exports = async (req, res) => {
     const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'callpay-28a28';
     const API_KEY    = process.env.FIREBASE_API_KEY    || 'AIzaSyBLPe_yx28LyefI856Ysxz3YEPnwA0ENFU';
 
-    // Ambil SEMUA order (untuk expire + cleanup sekaligus)
     const queryRes = await fetch(
       `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery?key=${API_KEY}`,
       {
         method : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body   : JSON.stringify({
-          structuredQuery: {
-            from: [{ collectionId: 'orders' }]
-          }
+          structuredQuery: { from: [{ collectionId: 'orders' }] }
         })
       }
     );
@@ -39,7 +48,6 @@ module.exports = async (req, res) => {
       const docId  = item.document.name.split('/').pop();
       const fields = item.document.fields || {};
 
-      // Parse fields
       const order = {};
       for (const [k, v] of Object.entries(fields)) {
         if (v.stringValue   !== undefined) order[k] = v.stringValue;
@@ -56,6 +64,11 @@ module.exports = async (req, res) => {
       // ── EXPIRE: order pending yang sudah lewat waktu ──
       if (status === 'pending' && expiredAt && expiredAt <= now) {
         await fsSet(`orders/${docId}`, { ...order, orderId: docId, status: 'expired' });
+
+        // Auto offline talent kalau timer habis tanpa respons
+        if (order.talentId) await setTalentOnline(order.talentId, false);
+
+        // Buat voucher untuk customer
         const vCode = generateVoucher();
         await fsSet(`vouchers/${vCode}`, {
           code: vCode, service: order.service || '', duration: order.duration || '',
@@ -68,7 +81,6 @@ module.exports = async (req, res) => {
 
       // ── CLEANUP: hapus order lama ──
       let shouldDelete = false;
-
       if (status === 'waiting_payment' && ageMin > 30) shouldDelete = true;
       else if (status === 'pending' && ageMin > 180) shouldDelete = true;
       else if (['accepted', 'rejected', 'expired'].includes(status) && ageMin > 1440) shouldDelete = true;
