@@ -216,8 +216,32 @@ async function checkStatus(){
   } catch(e){ console.error('checkStatus error:', e); }
 }
 
+// Kalau dari redirect Midtrans (ada parameter 'paid'), langsung confirm payment
+async function confirmPaymentIfNeeded() {
+  const isPaid = p.get('paid') === '1' || p.get('transaction_status') === 'settlement' || p.get('transaction_status') === 'capture';
+  if (!isPaid || !orderId) return;
+  
+  console.log('Confirming payment for:', orderId);
+  try {
+    const r = await fetch(`${BASE}/api/confirm-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId })
+    });
+    const d = await r.json();
+    console.log('Confirm payment response:', d);
+    if (d.success && d.expiredAt) {
+      startTimer(d.expiredAt);
+    }
+  } catch(e) {
+    console.error('Confirm payment error:', e);
+  }
+}
+
 // Cek sekali langsung saat load
 checkStatus();
+// Coba konfirmasi pembayaran kalau dari redirect Midtrans
+confirmPaymentIfNeeded();
 
 // Polling setiap 15 detik — hemat Firestore quota
 // Auto stop setelah 5 menit (20 × 15 detik)
