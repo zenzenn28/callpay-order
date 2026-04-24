@@ -32,7 +32,6 @@ function applyOverride() {
     const checked = document.getElementById('admin-fee-check')?.checked;
     if (!checked) { alert('Centang persetujuan biaya admin terlebih dahulu!'); return; }
 
-    // Decode service label dari key
     const svcLabel = window.SVC_KEY_TO_LABEL?.[svcRaw] || svcRaw;
     const durInt   = parseInt(durRaw);
     const price    = window.PRICES?.[svcLabel]?.[durInt] || 0;
@@ -139,6 +138,9 @@ window.checkVoucher = async function() {
     if (data.valid) {
       stat.style.color = '#3DD68C';
       stat.textContent = `Voucher valid! ${data.service} ${data.duration} menit - GRATIS`;
+
+      // AUTO-FILL form berdasarkan data voucher
+      autoFillVoucher(data);
     } else {
       stat.style.color = '#FF5C5C';
       stat.textContent = data.error || 'Voucher tidak valid';
@@ -148,6 +150,37 @@ window.checkVoucher = async function() {
     stat.textContent = 'Gagal cek voucher';
   }
 };
+
+// Auto-fill form berdasarkan data voucher
+function autoFillVoucher(data) {
+  // Set layanan
+  const svcEl = document.getElementById('modal-service');
+  if (svcEl && data.service) {
+    // Cari option yang cocok (case insensitive)
+    for (const opt of svcEl.options) {
+      const label = window.SVC_KEY_TO_LABEL?.[opt.value] || opt.value;
+      if (label.toLowerCase() === data.service.toLowerCase() || opt.value.toLowerCase() === data.service.toLowerCase()) {
+        svcEl.value = opt.value;
+        svcEl.dispatchEvent(new Event('change'));
+        break;
+      }
+    }
+  }
+
+  // Set durasi setelah layanan dipilih (butuh delay karena durasi di-render ulang)
+  setTimeout(() => {
+    const durEl = document.getElementById('modal-duration');
+    if (durEl && data.duration) {
+      for (const opt of durEl.options) {
+        if (String(opt.value) === String(data.duration)) {
+          durEl.value = opt.value;
+          durEl.dispatchEvent(new Event('change'));
+          break;
+        }
+      }
+    }
+  }, 300);
+}
 
 // Apply override setelah DOM ready
 if (document.readyState === 'loading') {
