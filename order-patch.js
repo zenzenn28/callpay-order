@@ -83,8 +83,8 @@ function applyOverride() {
         window.location.href = waitUrl;
       } else {
         window.snap.pay(data.midtransToken, {
-          onSuccess: () => { window.location.href = waitUrl; },
-          onPending: () => { window.location.href = waitUrl; },
+          onSuccess: () => { window.location.href = waitUrl + '&paid=1'; },
+          onPending: () => { window.location.href = waitUrl + '&paid=1'; },
           onError  : () => { alert('Pembayaran gagal. Coba lagi.'); if (btn) { btn.disabled = false; btn.textContent = 'Lanjut ke Pembayaran'; } },
           onClose  : () => { if (btn) { btn.disabled = false; btn.textContent = 'Lanjut ke Pembayaran'; } },
         });
