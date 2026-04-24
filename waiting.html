@@ -238,10 +238,41 @@ async function confirmPaymentIfNeeded() {
   }
 }
 
+// Auto confirm setelah 10 detik kalau masih waiting_payment
+// Ini untuk handle kasus mobile browser yang tidak redirect dengan benar
+let autoConfirmDone = false;
+async function autoConfirmPayment() {
+  if (autoConfirmDone || !orderId) return;
+  autoConfirmDone = true;
+  console.log('Auto confirming payment for:', orderId);
+  try {
+    const r = await fetch(`${BASE}/api/confirm-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId })
+    });
+    const d = await r.json();
+    console.log('Auto confirm response:', d);
+    if (d.success && d.expiredAt && d.status === 'pending') {
+      startTimer(d.expiredAt);
+    }
+  } catch(e) {
+    console.error('Auto confirm error:', e);
+  }
+}
+
 // Cek sekali langsung saat load
 checkStatus();
 // Coba konfirmasi pembayaran kalau dari redirect Midtrans
 confirmPaymentIfNeeded();
+
+// Auto confirm setelah 10 detik kalau masih di screen payment
+setTimeout(() => {
+  const paymentScreen = document.getElementById('screen-payment');
+  if (paymentScreen && paymentScreen.style.display !== 'none') {
+    autoConfirmPayment();
+  }
+}, 10000);
 
 // Polling setiap 15 detik — hemat Firestore quota
 // Auto stop setelah 5 menit (20 × 15 detik)
