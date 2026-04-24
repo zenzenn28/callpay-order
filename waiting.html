@@ -105,7 +105,22 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const FIREBASE_CONFIG = {
+  apiKey      : 'AIzaSyBLPe_yx28LyefI856Ysxz3YEPnwA0ENFU',
+  authDomain  : 'callpay-28a28.firebaseapp.com',
+  projectId   : 'callpay-28a28',
+  storageBucket: 'callpay-28a28.firebasestorage.app',
+  messagingSenderId: '44722427776',
+  appId       : '1:44722427776:web:29d1a297746cd83d685365'
+};
+
+const app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+const db  = getFirestore(app);
+
 const BASE    = 'https://callpay-order-15no.vercel.app';
 const p       = new URLSearchParams(window.location.search);
 const orderId = p.get('orderId');
@@ -113,7 +128,7 @@ const tName   = p.get('talentName') || '-';
 const tImg    = p.get('talentImg')  || '';
 const homeUrl = p.get('home') || '/';
 
-// Set nama talent di semua screen
+// Set nama talent
 document.getElementById('talent-name').textContent  = tName;
 document.getElementById('talent-name2').textContent = tName;
 if (tImg) {
@@ -123,9 +138,9 @@ if (tImg) {
 }
 
 const TOTAL = 120;
-let timerInt = null;
-let pollInt  = null;
+let timerInt    = null;
 let timerStarted = false;
+let unsubscribe  = null;
 
 function fmt(s){ return Math.floor(s/60)+':'+(s%60).toString().padStart(2,'0'); }
 function goHome(){ window.location.href = homeUrl; }
@@ -149,22 +164,10 @@ function startTimer(expiredAt){
     document.getElementById('prog').style.width  = (sLeft/TOTAL*100)+'%';
     if(sLeft <= 0){
       clearInterval(timerInt);
-      fetch(`${BASE}/api/expire-orders`)
-        .finally(() => setTimeout(checkStatus, 2000));
+      // Trigger expire di server
+      fetch(`${BASE}/api/expire-orders`).catch(()=>{});
     }
   }, 500);
-}
-
-async function getVoucherWithRetry(orderId, retries=5){
-  for(let i=0; i<retries; i++){
-    try{
-      const r = await fetch(`${BASE}/api/get-voucher?orderId=${orderId}`);
-      const d = await r.json();
-      if(d.voucherCode) return d.voucherCode;
-    }catch(e){}
-    await new Promise(r=>setTimeout(r, 1500));
-  }
-  return null;
 }
 
 function copyVoucher(){
@@ -174,122 +177,129 @@ function copyVoucher(){
     .catch(()=> alert('Kode: ' + code));
 }
 
-async function checkStatus(){
-  if(!orderId) return;
-  try{
-    const r = await fetch(`${BASE}/api/order-status?orderId=${orderId}`);
-    const d = await r.json();
-
-    if(d.status === 'waiting_payment'){
-      // Masih nunggu pembayaran, tampilkan screen payment
-      show('payment');
-
-    } else if(d.status === 'pending'){
-      // Pembayaran sudah dikonfirmasi, mulai timer
-      if(d.expiredAt) startTimer(d.expiredAt);
-
-    } else if(d.status === 'accepted'){
-      clearInterval(timerInt);
-      clearInterval(pollInt);
-      show('accepted');
-
-    } else if(d.status === 'rejected'){
-      clearInterval(timerInt);
-      clearInterval(pollInt);
-      document.getElementById('rej-title').textContent    = 'Order Ditolak';
-      document.getElementById('rej-subtitle').textContent = 'Talent tidak bisa menerima ordermu';
-      document.getElementById('voucher-code').textContent = 'Memuat voucher...';
-      show('rejected');
-      const code = await getVoucherWithRetry(orderId);
-      document.getElementById('voucher-code').textContent = code || 'Gagal memuat';
-
-    } else if(d.status === 'expired'){
-      clearInterval(timerInt);
-      clearInterval(pollInt);
-      document.getElementById('rej-title').textContent    = 'Waktu Habis';
-      document.getElementById('rej-subtitle').textContent = 'Talent tidak merespons dalam 2 menit';
-      document.getElementById('voucher-code').textContent = 'Memuat voucher...';
-      show('rejected');
-      const code = await getVoucherWithRetry(orderId);
-      document.getElementById('voucher-code').textContent = code || 'Gagal memuat';
-    }
-  } catch(e){ console.error('checkStatus error:', e); }
-}
-
-// Kalau dari redirect Midtrans (ada parameter 'paid'), langsung confirm payment
-async function confirmPaymentIfNeeded() {
-  const isPaid = p.get('paid') === '1' || p.get('transaction_status') === 'settlement' || p.get('transaction_status') === 'capture';
-  if (!isPaid || !orderId) return;
-  
-  console.log('Confirming payment for:', orderId);
+// Ambil voucher dari Firestore langsung
+async function getVoucher(orderId){
   try {
-    const r = await fetch(`${BASE}/api/confirm-payment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId })
-    });
-    const d = await r.json();
-    console.log('Confirm payment response:', d);
-    if (d.success && d.expiredAt) {
-      startTimer(d.expiredAt);
+    // Cari voucher berdasarkan originalOrder
+    const { collection, query, where, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const q = query(
+      collection(db, 'vouchers'),
+      where('originalOrder', '==', orderId)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      return snap.docs[0].data().code;
     }
   } catch(e) {
-    console.error('Confirm payment error:', e);
+    console.error('Get voucher error:', e);
+  }
+  // Fallback ke API
+  try {
+    const r = await fetch(`${BASE}/api/get-voucher?orderId=${orderId}`);
+    const d = await r.json();
+    return d.voucherCode || null;
+  } catch(e) { return null; }
+}
+
+// Handle perubahan status order — dipanggil oleh realtime listener
+async function handleOrderStatus(order) {
+  if (!order) return;
+
+  const status = order.status;
+  console.log('Order status:', status);
+
+  if (status === 'waiting_payment') {
+    show('payment');
+
+  } else if (status === 'pending') {
+    if (order.expiredAt) startTimer(order.expiredAt);
+
+  } else if (status === 'accepted') {
+    clearInterval(timerInt);
+    if (unsubscribe) unsubscribe();
+    show('accepted');
+
+  } else if (status === 'rejected' || status === 'expired') {
+    clearInterval(timerInt);
+    if (unsubscribe) unsubscribe();
+    document.getElementById('rej-title').textContent    = status === 'expired' ? 'Waktu Habis' : 'Order Ditolak';
+    document.getElementById('rej-subtitle').textContent = status === 'expired' ? 'Talent tidak merespons dalam 2 menit' : 'Talent tidak bisa menerima ordermu';
+    document.getElementById('voucher-code').textContent = 'Memuat voucher...';
+    show('rejected');
+    const code = await getVoucher(orderId);
+    document.getElementById('voucher-code').textContent = code || 'Gagal memuat';
   }
 }
 
-// Auto confirm setelah 10 detik kalau masih waiting_payment
-// Ini untuk handle kasus mobile browser yang tidak redirect dengan benar
+// Konfirmasi pembayaran setelah redirect Midtrans
+async function confirmPaymentIfNeeded() {
+  const isPaid = p.get('paid') === '1' || p.get('transaction_status') === 'settlement' || p.get('transaction_status') === 'capture';
+  if (!isPaid || !orderId) return;
+  console.log('Confirming payment:', orderId);
+  try {
+    await fetch(`${BASE}/api/confirm-payment`, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ orderId })
+    });
+  } catch(e) { console.error('Confirm error:', e); }
+}
+
+// Auto confirm setelah 10 detik kalau masih waiting_payment (untuk mobile)
 let autoConfirmDone = false;
 async function autoConfirmPayment() {
   if (autoConfirmDone || !orderId) return;
   autoConfirmDone = true;
-  console.log('Auto confirming payment for:', orderId);
+  console.log('Auto confirming payment:', orderId);
   try {
-    const r = await fetch(`${BASE}/api/confirm-payment`, {
-      method: 'POST',
+    await fetch(`${BASE}/api/confirm-payment`, {
+      method : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId })
+      body   : JSON.stringify({ orderId })
     });
-    const d = await r.json();
-    console.log('Auto confirm response:', d);
-    if (d.success && d.expiredAt && d.status === 'pending') {
-      startTimer(d.expiredAt);
-    }
-  } catch(e) {
-    console.error('Auto confirm error:', e);
-  }
+  } catch(e) { console.error('Auto confirm error:', e); }
 }
 
-// Cleanup order lama saat halaman load (fire and forget)
-fetch(`${BASE}/api/expire-orders`).catch(()=>{});
+// ── MAIN: Realtime listener langsung ke Firestore ──
+if (orderId) {
+  // Konfirmasi pembayaran kalau dari redirect Midtrans
+  confirmPaymentIfNeeded();
 
-// Cek sekali langsung saat load
-checkStatus();
-// Coba konfirmasi pembayaran kalau dari redirect Midtrans
-confirmPaymentIfNeeded();
+  // Auto confirm setelah 10 detik kalau masih di screen payment (untuk mobile)
+  setTimeout(() => {
+    const paymentScreen = document.getElementById('screen-payment');
+    if (paymentScreen && paymentScreen.style.display !== 'none') {
+      autoConfirmPayment();
+    }
+  }, 10000);
 
-// Auto confirm setelah 10 detik kalau masih di screen payment
-setTimeout(() => {
-  const paymentScreen = document.getElementById('screen-payment');
-  if (paymentScreen && paymentScreen.style.display !== 'none') {
-    autoConfirmPayment();
-  }
-}, 10000);
+  // Cleanup order lama (fire and forget)
+  fetch(`${BASE}/api/expire-orders`).catch(()=>{});
 
-// Polling setiap 15 detik — hemat Firestore quota
-// Auto stop setelah 5 menit (20 × 15 detik)
-let pollCount = 0;
-const MAX_POLLS = 20;
-pollInt = setInterval(() => {
-  pollCount++;
-  if (pollCount >= MAX_POLLS) {
-    clearInterval(pollInt);
-    console.log('Polling stopped after 5 minutes');
-    return;
-  }
-  checkStatus();
-}, 15000);
+  // Realtime listener — tidak perlu polling sama sekali!
+  const orderRef = doc(db, 'orders', orderId);
+  unsubscribe = onSnapshot(orderRef, (snap) => {
+    if (!snap.exists()) {
+      console.log('Order not found');
+      show('payment');
+      return;
+    }
+    handleOrderStatus(snap.data());
+  }, (error) => {
+    console.error('Listener error:', error);
+    // Fallback: cek sekali saja
+    getDoc(orderRef).then(snap => {
+      if (snap.exists()) handleOrderStatus(snap.data());
+    });
+  });
+
+} else {
+  show('payment');
+}
+
+// Expose ke global untuk tombol
+window.goHome    = goHome;
+window.copyVoucher = copyVoucher;
 </script>
 </body>
 </html>
