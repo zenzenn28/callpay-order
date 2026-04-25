@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
       // Auto offline talent — sedang dalam layanan
       if (order.talentId) await setTalentOnline(order.talentId, false);
 
-      return res.status(200).json({ success: true, status: 'accepted', custWa: order.custWa });
+      return res.status(200).json({ success: true, status: 'accepted', custWa: order.custWa, price: order.originalPrice || order.price || 0 });
 
     } else if (action === 'reject') {
       // Update order jadi rejected
