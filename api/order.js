@@ -22,6 +22,8 @@ async function createMidtransTransaction(orderId, amount, service, duration, cus
     ],
     customer_details: { phone: custWa },
     callbacks: { finish: `${baseUrl}/waiting.html?orderId=${orderId}` },
+    enabled_payments: ['qris'],
+    qris: { acquirer: 'gopay' },
   };
 
   const res = await fetch('https://app.sandbox.midtrans.com/snap/v1/transactions', {
