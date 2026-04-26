@@ -118,7 +118,8 @@ function injectModalFields() {
   waWrap.innerHTML = `
     <label style="display:block;font-size:.72rem;font-weight:800;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">NOMOR WHATSAPP KAMU *</label>
     <input type="tel" id="modal-cust-wa" placeholder="Contoh: 08123456789"
-      style="width:100%;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:600;outline:none">`;
+      style="width:100%;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:600;outline:none">
+    <div style="font-size:.7rem;color:rgba(240,235,248,.4);font-weight:600;margin-top:5px">📱 Nomor ini yang akan dihubungi oleh talent</div>`;
   noteEl.parentElement?.insertBefore(waWrap, noteEl.parentElement.firstChild);
 
   const vcWrap = document.createElement('div');
