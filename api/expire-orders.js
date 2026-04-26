@@ -169,12 +169,29 @@ module.exports = async (req, res) => {
       if (status === 'pending' && expiredAt && expiredAt <= now) {
         await fsSet(`orders/${docId}`, { ...order, orderId: docId, status: 'expired' });
         if (order.talentId) await setTalentOnline(order.talentId, false);
-        const vCode = generateVoucher();
-        await fsSet(`vouchers/${vCode}`, {
-          code: vCode, service: order.service || '', duration: order.duration || '',
-          used: false, createdAt: now.toISOString(),
-          reason: 'talent_timeout', custWa: order.custWa || '', originalOrder: docId,
-        });
+
+        // Kalau order pakai voucher → kembalikan voucher yang sama (reset used)
+        if (order.useVoucher && order.voucherCode) {
+          try {
+            const vSnap = await fsGet(`vouchers/${order.voucherCode}`);
+            if (vSnap && vSnap.fields) {
+              const vData = fromFirestore(vSnap.fields);
+              await fsSet(`vouchers/${order.voucherCode}`, {
+                ...vData, used: false, usedAt: null, usedOrder: null,
+              });
+              console.log('Voucher reused (timeout):', order.voucherCode);
+            }
+          } catch(e) { console.error('Reset voucher error:', e.message); }
+        } else {
+          // Buat voucher baru kalau tidak pakai voucher sebelumnya
+          const vCode = generateVoucher();
+          await fsSet(`vouchers/${vCode}`, {
+            code: vCode, service: order.service || '', duration: order.duration || '',
+            used: false, createdAt: now.toISOString(),
+            reason: 'talent_timeout', custWa: order.custWa || '', originalOrder: docId,
+            talentName: order.talentName || '',
+          });
+        }
         expired++;
         continue;
       }
