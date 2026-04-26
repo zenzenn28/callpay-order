@@ -5,15 +5,21 @@ function generateOrderId() {
   return 'ORD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
 }
 
+const ADMIN_FEE = 3000;
+
 async function createMidtransTransaction(orderId, amount, service, duration, custWa) {
-  const serverKey = process.env.MIDTRANS_SERVER_KEY;
+  const serverKey   = process.env.MIDTRANS_SERVER_KEY;
   if (!serverKey) throw new Error('MIDTRANS_SERVER_KEY not set');
-  const auth    = Buffer.from(serverKey + ':').toString('base64');
-  const baseUrl = 'https://callpay-order-15no.vercel.app';
+  const auth        = Buffer.from(serverKey + ':').toString('base64');
+  const baseUrl     = 'https://callpay-order-15no.vercel.app';
+  const totalAmount = Number(amount) + ADMIN_FEE;
 
   const payload = {
-    transaction_details: { order_id: orderId, gross_amount: Number(amount) },
-    item_details: [{ id: service.toLowerCase().replace(/\s/g,'-'), price: Number(amount), quantity: 1, name: `${service} ${duration} menit` }],
+    transaction_details: { order_id: orderId, gross_amount: totalAmount },
+    item_details: [
+      { id: service.toLowerCase().replace(/\s/g,'-'), price: Number(amount), quantity: 1, name: `${service} ${duration} menit` },
+      { id: 'admin-fee', price: ADMIN_FEE, quantity: 1, name: 'Biaya Admin' },
+    ],
     customer_details: { phone: custWa },
     callbacks: { finish: `${baseUrl}/waiting.html?orderId=${orderId}` },
   };
