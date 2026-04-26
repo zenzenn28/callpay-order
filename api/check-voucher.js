@@ -15,6 +15,7 @@ module.exports = async (req, res) => {
       valid   : true,
       service : data.service,
       duration: data.duration,
+      custWa  : data.custWa || '',
     });
   } catch(e) {
     return res.status(500).json({ valid: false, error: 'Server error' });
