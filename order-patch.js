@@ -11,10 +11,7 @@ const MIDTRANS_CLIENT = 'Mid-client-Endj0wHvJambaZCs';
   document.head.appendChild(s);
 })();
 
-function applyOverride() {
-  injectModalFields();
-
-  // Unlock semua field yang dikunci voucher
+// ── Unlock semua field yang dikunci voucher ──
 function unlockVoucherFields() {
   const waEl  = document.getElementById('modal-cust-wa');
   const svcEl = document.getElementById('modal-service');
@@ -28,7 +25,10 @@ function unlockVoucherFields() {
   if (vcEl)  { vcEl.value = ''; }
 }
 
-window.confirmViaWA = async function() {
+function applyOverride() {
+  injectModalFields();
+
+  window.confirmViaWA = async function() {
     const talent  = window.activeTalent;
     const svcEl   = document.getElementById('modal-service');
     const durEl   = document.getElementById('modal-duration');
@@ -49,8 +49,6 @@ window.confirmViaWA = async function() {
     const svcLabel = window.SVC_KEY_TO_LABEL?.[svcRaw] || svcRaw;
     const durInt   = parseInt(durRaw);
     const price    = window.PRICES?.[svcLabel]?.[durInt] || 0;
-
-    console.log('Order:', { talent: talent.name, svcRaw, svcLabel, durRaw, durInt, price, custWa });
 
     const btn = document.getElementById('modal-wa-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
@@ -74,7 +72,6 @@ window.confirmViaWA = async function() {
       });
 
       const data = await res.json();
-      console.log('Response:', data);
 
       if (!data.success) {
         alert('Gagal: ' + (data.error || 'Terjadi kesalahan'));
@@ -183,7 +180,6 @@ window.checkVoucher = async function() {
 
 // Auto-fill form berdasarkan data voucher
 function autoFillVoucher(data) {
-  // Auto-fill nomor WA customer kalau ada di voucher
   if (data.custWa) {
     const waEl = document.getElementById('modal-cust-wa');
     if (waEl && !waEl.value) {
@@ -193,10 +189,8 @@ function autoFillVoucher(data) {
     }
   }
 
-  // Set layanan
   const svcEl = document.getElementById('modal-service');
   if (svcEl && data.service) {
-    // Cari option yang cocok (case insensitive)
     for (const opt of svcEl.options) {
       const label = window.SVC_KEY_TO_LABEL?.[opt.value] || opt.value;
       if (label.toLowerCase() === data.service.toLowerCase() || opt.value.toLowerCase() === data.service.toLowerCase()) {
@@ -207,7 +201,6 @@ function autoFillVoucher(data) {
     }
   }
 
-  // Set durasi setelah layanan dipilih (butuh delay karena durasi di-render ulang)
   setTimeout(() => {
     const durEl = document.getElementById('modal-duration');
     if (durEl && data.duration) {
