@@ -162,12 +162,18 @@ window.checkVoucher = async function() {
       const waEl  = document.getElementById('modal-cust-wa');
       const svcEl = document.getElementById('modal-service');
       const durEl = document.getElementById('modal-duration');
-      if (waEl)  { waEl.readOnly  = true; waEl.style.opacity  = '.6'; waEl.style.cursor = 'not-allowed'; }
-      if (svcEl) { svcEl.disabled = true; svcEl.style.opacity = '.6'; }
-      if (durEl) { durEl.disabled = true; durEl.style.opacity = '.6'; }
-
       // AUTO-FILL form berdasarkan data voucher
       autoFillVoucher(data);
+
+      // Kunci field setelah autofill selesai
+      setTimeout(() => {
+        const waEl2  = document.getElementById('modal-cust-wa');
+        const svcEl2 = document.getElementById('modal-service');
+        const durEl2 = document.getElementById('modal-duration');
+        if (waEl2)  { waEl2.readOnly  = true; waEl2.style.opacity = '.6'; waEl2.style.cursor = 'not-allowed'; }
+        if (svcEl2) { svcEl2.disabled = true; svcEl2.style.opacity = '.6'; }
+        if (durEl2) { durEl2.disabled = true; durEl2.style.opacity = '.6'; }
+      }, 500);
     } else {
       stat.style.color = '#FF5C5C';
       stat.textContent = data.error || 'Voucher tidak valid';
