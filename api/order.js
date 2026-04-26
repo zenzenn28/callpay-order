@@ -22,7 +22,7 @@ async function createMidtransTransaction(orderId, amount, service, duration, cus
     ],
     customer_details: { phone: custWa },
     callbacks: { finish: `${baseUrl}/waiting.html?orderId=${orderId}` },
-    enabled_payments: ['qris'],
+    enabled_payments: ['qris', 'gopay', 'shopeepay', 'other_qris'],
     qris: { acquirer: 'gopay' },
   };
 
