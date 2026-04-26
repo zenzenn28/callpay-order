@@ -139,6 +139,13 @@ window.checkVoucher = async function() {
       stat.style.color = '#3DD68C';
       stat.textContent = `Voucher valid! ${data.service} ${data.duration} menit - GRATIS`;
 
+      // Auto centang checkbox admin fee
+      const adminCheck = document.getElementById('admin-fee-check');
+      if (adminCheck) {
+        adminCheck.checked = true;
+        adminCheck.dispatchEvent(new Event('change'));
+      }
+
       // AUTO-FILL form berdasarkan data voucher
       autoFillVoucher(data);
     } else {
