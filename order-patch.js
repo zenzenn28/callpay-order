@@ -14,7 +14,21 @@ const MIDTRANS_CLIENT = 'Mid-client-Endj0wHvJambaZCs';
 function applyOverride() {
   injectModalFields();
 
-  window.confirmViaWA = async function() {
+  // Unlock semua field yang dikunci voucher
+function unlockVoucherFields() {
+  const waEl  = document.getElementById('modal-cust-wa');
+  const svcEl = document.getElementById('modal-service');
+  const durEl = document.getElementById('modal-duration');
+  const stat  = document.getElementById('voucher-status');
+  const vcEl  = document.getElementById('modal-voucher');
+  if (waEl)  { waEl.readOnly  = false; waEl.style.opacity  = '1'; waEl.style.cursor = ''; }
+  if (svcEl) { svcEl.disabled = false; svcEl.style.opacity = '1'; }
+  if (durEl) { durEl.disabled = false; durEl.style.opacity = '1'; }
+  if (stat)  { stat.style.display = 'none'; stat.textContent = ''; }
+  if (vcEl)  { vcEl.value = ''; }
+}
+
+window.confirmViaWA = async function() {
     const talent  = window.activeTalent;
     const svcEl   = document.getElementById('modal-service');
     const durEl   = document.getElementById('modal-duration');
@@ -97,6 +111,7 @@ function applyOverride() {
 }
 
 function injectModalFields() {
+  unlockVoucherFields();
   if (document.getElementById('modal-cust-wa')) return;
   const noteEl = document.getElementById('modal-note');
   if (!noteEl) return;
@@ -145,6 +160,14 @@ window.checkVoucher = async function() {
         adminCheck.checked = true;
         adminCheck.dispatchEvent(new Event('change'));
       }
+
+      // Kunci nomor WA dan layanan agar tidak bisa diubah
+      const waEl  = document.getElementById('modal-cust-wa');
+      const svcEl = document.getElementById('modal-service');
+      const durEl = document.getElementById('modal-duration');
+      if (waEl)  { waEl.readOnly  = true; waEl.style.opacity  = '.6'; waEl.style.cursor = 'not-allowed'; }
+      if (svcEl) { svcEl.disabled = true; svcEl.style.opacity = '.6'; }
+      if (durEl) { durEl.disabled = true; durEl.style.opacity = '.6'; }
 
       // AUTO-FILL form berdasarkan data voucher
       autoFillVoucher(data);
