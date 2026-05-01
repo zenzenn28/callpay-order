@@ -1,7 +1,7 @@
 // order-patch.js - Override confirmViaWA dengan sistem order baru + Midtrans
 
 const API_BASE        = 'https://callpay-order-15no.vercel.app';
-let _activeVoucherCode = ''; // simpan kode voucher yang sudah divalidasi
+let _activeVoucherCode = '';
 const MIDTRANS_CLIENT = 'Mid-client-Endj0wHvJambaZCs';
 
 // Load Midtrans Snap
@@ -24,7 +24,7 @@ function unlockVoucherFields() {
   if (durEl) { durEl.disabled = false; durEl.style.opacity = '1'; }
   if (stat)  { stat.style.display = 'none'; stat.textContent = ''; }
   if (vcEl)  { vcEl.value = ''; }
-  _activeVoucherCode = ''; // reset voucher aktif
+  _activeVoucherCode = '';
 }
 
 function applyOverride() {
@@ -110,8 +110,10 @@ function applyOverride() {
 }
 
 function injectModalFields() {
-  unlockVoucherFields();
+  // ← cek dulu sebelum unlock, agar voucher tidak ter-reset
   if (document.getElementById('modal-cust-wa')) return;
+  unlockVoucherFields();
+
   const noteEl = document.getElementById('modal-note');
   if (!noteEl) return;
 
@@ -153,7 +155,7 @@ window.checkVoucher = async function() {
     if (data.valid) {
       stat.style.color = '#3DD68C';
       stat.textContent = `Voucher valid! ${data.service} ${data.duration} menit - GRATIS`;
-      _activeVoucherCode = code; // simpan kode voucher aktif
+      _activeVoucherCode = code;
 
       // Auto centang checkbox admin fee
       const adminCheck = document.getElementById('admin-fee-check');
@@ -162,10 +164,6 @@ window.checkVoucher = async function() {
         adminCheck.dispatchEvent(new Event('change'));
       }
 
-      // Kunci nomor WA dan layanan agar tidak bisa diubah
-      const waEl  = document.getElementById('modal-cust-wa');
-      const svcEl = document.getElementById('modal-service');
-      const durEl = document.getElementById('modal-duration');
       // AUTO-FILL form berdasarkan data voucher
       autoFillVoucher(data);
 
