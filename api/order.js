@@ -1,5 +1,6 @@
 // api/order.js - Buat order baru + Midtrans payment
 const { fsGet, fsSet, fromFirestore } = require('../lib/firebase');
+const { sendTelegramToAgency, sendTelegramToTalent } = require('../lib/telegram');
 
 function generateOrderId() {
   return 'ORD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
@@ -38,43 +39,38 @@ async function createMidtransTransaction(orderId, amount, service, duration, cus
   return JSON.parse(responseText);
 }
 
-
 function formatDuration(minutes) {
   const m = Number(minutes);
   if (m < 60) return m + ' menit';
   const jam = m / 60;
-  // Format jam: kalau bulat tampilkan angka bulat, kalau tidak bulatkan ke 1 desimal
   const jamStr = Number.isInteger(jam) ? jam.toString() : jam.toFixed(1).replace('.', ',');
   return jamStr + ' jam';
 }
 
-async function sendTwilioNotif(waNumber, service, duration, price, orderId, custWa) {
-  const sid   = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from  = process.env.TWILIO_WA_NUMBER;
+// Notif ke talent via Telegram (chat pribadi)
+async function notifTalent(telegramChatId, service, duration, orderId) {
+  const msg =
+    `🔔 <b>Ada Order Masuk!</b>\n\n` +
+    `📋 Layanan: <b>${service}</b>\n` +
+    `⏱️ Durasi: <b>${duration} menit</b>\n\n` +
+    `Buka portal talent untuk <b>Terima</b> atau <b>Tolak</b> dalam 2 menit!\n` +
+    `👉 https://callpay.id/talent.html\n\n` +
+    `🆔 ID: <code>${orderId}</code>`;
+  await sendTelegramToTalent(telegramChatId, msg);
+}
 
-  if (!sid || !token || !from) throw new Error('Twilio ENV not set');
-
-  let cleanNum = waNumber.toString().replace(/\D/g, '');
-  if (cleanNum.startsWith('62')) cleanNum = cleanNum.slice(2);
-  if (cleanNum.startsWith('0'))  cleanNum = cleanNum.slice(1);
-  const to = `whatsapp:+62${cleanNum}`;
-
-  console.log('Sending WA to:', to, 'from:', from);
-
-  const last4 = custWa.replace(/\D/g, '').slice(-4);
-  const body = `🔔 *Ada Order Masuk!*\n\n📋 Layanan: *${service}*\n⏱️ Durasi: *${duration} menit*\n\nBuka portal talent untuk *Terima* atau *Tolak* dalam 2 menit!\n👉 https://callpay.id/talent.html\n\nID: ${orderId}`;
-  const auth = Buffer.from(`${sid}:${token}`).toString('base64');
-
-  const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-    method : 'POST',
-    headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body   : new URLSearchParams({ From: from, To: to, Body: body }),
-  });
-
-  const twilioText = await twilioRes.text();
-  console.log('Twilio response:', twilioText);
-  if (!twilioRes.ok) throw new Error('Twilio error: ' + twilioText);
+// Notif ke grup agensi via Telegram
+async function notifAgency(adminParam, talentName, service, duration, price, orderId) {
+  const agencyLabel = adminParam === 'admin2' ? 'SleepcallPay' : 'CallPay';
+  const msg =
+    `📥 <b>Order Baru Masuk!</b>\n\n` +
+    `🏢 Agensi: <b>${agencyLabel}</b>\n` +
+    `👤 Talent: <b>${talentName}</b>\n` +
+    `📋 Layanan: <b>${service}</b>\n` +
+    `⏱️ Durasi: <b>${duration} menit</b>\n` +
+    `💰 Harga: <b>Rp ${Number(price).toLocaleString('id-ID')}</b>\n\n` +
+    `🆔 ID: <code>${orderId}</code>`;
+  await sendTelegramToAgency(adminParam, msg);
 }
 
 module.exports = async (req, res) => {
@@ -91,7 +87,6 @@ module.exports = async (req, res) => {
     const cleanWa = custWa.replace(/\D/g, '');
     if (cleanWa.length < 9) return res.status(400).json({ error: 'Nomor WA tidak valid' });
 
-    // Normalize talentId ke lowercase agar cocok dengan Firestore
     const talentIdClean = talentId.toString().toLowerCase().trim();
 
     // Cek voucher
@@ -109,23 +104,22 @@ module.exports = async (req, res) => {
       useVoucher  = true;
     }
 
-    // Ambil WA talent
-    let talentWa = null;
+    // Ambil data talent (WA & Telegram Chat ID)
+    let talentWa = null, talentWaTelegram = null;
     try {
       console.log('Fetching talent:', talentIdClean);
       const tSnap = await fsGet(`talents/${talentIdClean}`);
       console.log('Talent snap exists:', !!tSnap?.fields);
       if (tSnap && tSnap.fields) {
         const tData = fromFirestore(tSnap.fields);
-        talentWa = tData.waNumber || null;
-        console.log('waNumber found:', talentWa);
+        talentWa         = tData.waNumber       || null;
+        talentWaTelegram = tData.telegramChatId || null;
+        console.log('waNumber found:', talentWa, '| telegramChatId:', talentWaTelegram);
       }
     } catch(e) { console.error('Fetch talent error:', e.message); }
 
     const orderId   = generateOrderId();
     const now       = new Date().toISOString();
-    // expiredAt dihitung dari SETELAH pembayaran — di-set ulang oleh webhook Midtrans
-    // Untuk voucher/gratis langsung set 2 menit dari sekarang
     const expiredAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
 
     const orderData = {
@@ -141,24 +135,25 @@ module.exports = async (req, res) => {
       note       : note || '',
       voucherCode: voucherCode || '',
       useVoucher,
-      // Status 'waiting_payment' dulu, jadi timer belum jalan
-      // Akan berubah jadi 'pending' setelah Midtrans webhook konfirmasi
       status     : useVoucher ? 'pending' : 'waiting_payment',
       adminParam : adminParam || 'callpay',
       createdAt  : now,
       expiredAt  : useVoucher ? expiredAt : null,
       talentWa   : talentWa || '',
+      talentTelegramChatId: talentWaTelegram || '',
     };
 
     await fsSet(`orders/${orderId}`, orderData);
 
-    // Tandai voucher dipakai
+    // Tandai voucher dipakai + kirim notif (khusus order voucher/gratis)
     if (voucherData) {
       await fsSet(`vouchers/${voucherData.code}`, { ...voucherData, used: true, usedAt: now, usedOrder: orderId });
-      // Kirim notif WA langsung kalau pakai voucher (gratis)
-      if (talentWa) {
-        try { await sendTwilioNotif(talentWa, service, duration, price, orderId, cleanWa); }
-        catch(e) { console.error('Twilio failed:', e.message); }
+      try {
+        await notifAgency(adminParam || 'callpay', talentName || talentIdClean, service, duration, price, orderId);
+      } catch(e) { console.error('Telegram agency notif failed:', e.message); }
+      if (talentWaTelegram) {
+        try { await notifTalent(talentWaTelegram, service, duration, orderId); }
+        catch(e) { console.error('Telegram talent notif failed:', e.message); }
       }
     }
 
