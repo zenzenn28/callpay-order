@@ -40,7 +40,7 @@ function injectModalFields() {
     <div style="font-size:.78rem;color:rgba(240,235,248,.35);font-weight:600;margin-bottom:12px">Masukkan kode voucher yang kamu beli dari admin.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <input type="text" id="modal-voucher" placeholder="Masukkan kode voucher"
-        style="flex:1;padding:11px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:600;outline:none;text-transform:uppercase;transition:border-color .2s"
+        style="flex:1;padding:11px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;outline:none;text-transform:uppercase;transition:border-color .2s"
         oninput="this.value=this.value.toUpperCase()">
       <button id="btn-gunakan" onclick="window.checkVoucher()"
         style="padding:11px 18px;border-radius:10px;background:transparent;border:2px solid #FFB800;color:#FFB800;font-family:'Nunito',sans-serif;font-weight:900;font-size:.88rem;cursor:pointer;white-space:nowrap;transition:all .2s"
@@ -61,7 +61,7 @@ function injectModalFields() {
     <div id="svc-list" style="display:flex;flex-direction:column;gap:8px"></div>
     <div style="margin-top:14px;margin-bottom:6px;font-size:.72rem;font-weight:900;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.06em">Catatan (opsional)</div>
     <textarea id="modal-note" rows="2" placeholder="Ceritakan apa yang kamu inginkan..."
-      style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:600;padding:10px 14px;outline:none;resize:vertical;transition:border-color .2s"></textarea>
+      style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;padding:10px 14px;outline:none;resize:vertical;transition:border-color .2s"></textarea>
   `;
   scroll.appendChild(svcSection);
 
