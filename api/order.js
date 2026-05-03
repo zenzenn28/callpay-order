@@ -47,28 +47,34 @@ function formatDuration(minutes) {
   return jamStr + ' jam';
 }
 
-// Notif ke talent via Telegram (chat pribadi)
-async function notifTalent(telegramChatId, service, duration, orderId) {
+// Notif ke talent via Telegram (chat pribadi) — WA hanya 4 digit terakhir
+async function notifTalent(telegramChatId, service, duration, orderId, custWa) {
+  const last4 = custWa ? ('xxxx-xxxx-' + String(custWa).replace(/\D/g,'').slice(-4)) : '—';
   const msg =
     `🔔 <b>Ada Order Masuk!</b>\n\n` +
     `📋 Layanan: <b>${service}</b>\n` +
-    `⏱️ Durasi: <b>${duration} menit</b>\n\n` +
+    `⏱️ Durasi: <b>${duration} menit</b>\n` +
+    `📱 WA Customer: <b>${last4}</b>\n\n` +
     `Buka portal talent untuk <b>Terima</b> atau <b>Tolak</b> dalam 2 menit!\n` +
     `👉 https://callpay.id/talent.html\n\n` +
     `🆔 ID: <code>${orderId}</code>`;
   await sendTelegramToTalent(telegramChatId, msg);
 }
 
-// Notif ke grup agensi via Telegram
-async function notifAgency(adminParam, talentName, service, duration, price, orderId) {
-  const agencyLabel = adminParam === 'admin2' ? 'SleepcallPay' : 'CallPay';
+// Notif ke grup agensi via Telegram — WA customer tampil full
+async function notifAgency(adminParam, talentName, service, duration, price, orderId, custWa) {
+  const LABELS = { admin1: 'CallPay', admin2: 'SleepcallPay', admin3: 'ScallpayZ' };
+  const agencyLabel = LABELS[adminParam] || 'CallPay';
+  let waDisplay = custWa ? String(custWa).replace(/\D/g,'') : '—';
+  if (waDisplay.startsWith('62')) waDisplay = '0' + waDisplay.slice(2);
   const msg =
     `📥 <b>Order Baru Masuk!</b>\n\n` +
     `🏢 Agensi: <b>${agencyLabel}</b>\n` +
     `👤 Talent: <b>${talentName}</b>\n` +
     `📋 Layanan: <b>${service}</b>\n` +
     `⏱️ Durasi: <b>${duration} menit</b>\n` +
-    `💰 Harga: <b>Rp ${Number(price).toLocaleString('id-ID')}</b>\n\n` +
+    `💰 Harga: <b>Rp ${Number(price).toLocaleString('id-ID')}</b>\n` +
+    `📱 WA Customer: <b>${waDisplay}</b>\n\n` +
     `🆔 ID: <code>${orderId}</code>`;
   await sendTelegramToAgency(adminParam, msg);
 }
@@ -149,10 +155,10 @@ module.exports = async (req, res) => {
     if (voucherData) {
       await fsSet(`vouchers/${voucherData.code}`, { ...voucherData, used: true, usedAt: now, usedOrder: orderId });
       try {
-        await notifAgency(adminParam || 'callpay', talentName || talentIdClean, service, duration, price, orderId);
+        await notifAgency(adminParam || 'admin1', talentName || talentIdClean, service, duration, price, orderId, cleanWa);
       } catch(e) { console.error('Telegram agency notif failed:', e.message); }
       if (talentWaTelegram) {
-        try { await notifTalent(talentWaTelegram, service, duration, orderId); }
+        try { await notifTalent(talentWaTelegram, service, duration, orderId, cleanWa); }
         catch(e) { console.error('Telegram talent notif failed:', e.message); }
       }
     }
