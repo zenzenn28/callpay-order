@@ -161,6 +161,30 @@ window.checkVoucher = async function() {
         </div>
       `;
 
+      // Cek cooldown untuk talent ini
+      const talentIdStr = String(window.activeTalent?._docId || window.activeTalent?.id || '');
+      const waForCd     = data.custWa ? String(data.custWa).replace(/\D/g,'') : '';
+      if (talentIdStr && waForCd) {
+        try {
+          const cdRes  = await fetch(`${API_BASE}/api/check-cooldown?talentId=${encodeURIComponent(talentIdStr)}&custWa=${encodeURIComponent(waForCd)}`);
+          const cdData = await cdRes.json();
+          if (cdData.cooldown) {
+            const sisaJam = Math.floor(cdData.sisaMenit / 60);
+            const sisaMnt = cdData.sisaMenit % 60;
+            const sisaStr = sisaJam > 0 ? `${sisaJam} jam${sisaMnt > 0 ? ' ' + sisaMnt + ' menit' : ''}` : `${cdData.sisaMenit} menit`;
+            msg.style.background = 'rgba(255,184,0,.06)';
+            msg.style.border      = '1px solid rgba(255,184,0,.25)';
+            msg.style.display     = 'block';
+            msg.innerHTML = `
+              <div style="font-size:.82rem;font-weight:800;color:#FFB800;margin-bottom:4px">⏳ Talent ini menolak orderanmu</div>
+              <div style="font-size:.78rem;font-weight:600;color:rgba(240,235,248,.6)">Tunggu <b style="color:#FFB800">${sisaStr}</b> sebelum order ke talent ini lagi, atau pilih talent lain.</div>
+            `;
+            if (btnGun) { btnGun.disabled = false; btnGun.style.opacity = '1'; }
+            return; // stop — jangan tampilkan pilihan layanan
+          }
+        } catch(e) { /* lanjut kalau gagal cek */ }
+      }
+
       // Kunci input voucher
       const vcInput = document.getElementById('modal-voucher');
       if (vcInput) { vcInput.readOnly = true; vcInput.style.opacity = '.5'; }
@@ -316,19 +340,26 @@ async function doOrder() {
   const btn = document.getElementById('modal-wa-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
 
-  // Cek cooldown dulu
+  // Cek cooldown — hanya berlaku untuk talent yang sama
   if (custWa) {
     try {
-      const cdRes  = await fetch(`${API_BASE}/api/check-cooldown?talentId=${encodeURIComponent(String(talent._docId||talent.id))}&custWa=${encodeURIComponent(custWa)}`);
+      const talentIdStr = String(talent._docId || talent.id);
+      const cdRes  = await fetch(`${API_BASE}/api/check-cooldown?talentId=${encodeURIComponent(talentIdStr)}&custWa=${encodeURIComponent(custWa)}`);
       const cdData = await cdRes.json();
       if (cdData.cooldown) {
         if (btn) { btn.disabled = false; btn.textContent = '🎀 Pesan Sekarang'; }
+        const sisaJam  = Math.floor(cdData.sisaMenit / 60);
+        const sisaMnt  = cdData.sisaMenit % 60;
+        const sisaStr  = sisaJam > 0 ? `${sisaJam} jam ${sisaMnt > 0 ? sisaMnt + ' menit' : ''}` : `${cdData.sisaMenit} menit`;
         const msgEl = document.getElementById('voucher-msg');
         if (msgEl) {
           msgEl.style.display    = 'block';
-          msgEl.style.background = 'rgba(255,92,92,.06)';
-          msgEl.style.border     = '1px solid rgba(255,92,92,.25)';
-          msgEl.innerHTML = `<span style="color:#FF5C5C;font-size:.82rem;font-weight:700">⏳ Kamu baru saja menolak talent ini. Coba lagi dalam <b>${cdData.sisaMenit} menit</b>.</span>`;
+          msgEl.style.background = 'rgba(255,184,0,.06)';
+          msgEl.style.border     = '1px solid rgba(255,184,0,.25)';
+          msgEl.innerHTML = `
+            <div style="font-size:.82rem;font-weight:800;color:#FFB800;margin-bottom:4px">⏳ Talent ini menolak orderanmu</div>
+            <div style="font-size:.78rem;font-weight:600;color:rgba(240,235,248,.6)">Tunggu <b style="color:#FFB800">${sisaStr.trim()}</b> sebelum order ke talent ini lagi, atau pilih talent lain.</div>
+          `;
         }
         return;
       }
