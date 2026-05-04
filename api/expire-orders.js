@@ -128,8 +128,8 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   try {
-    const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'callpay-28a28';
-    const API_KEY    = process.env.FIREBASE_API_KEY    || 'AIzaSyBLPe_yx28LyefI856Ysxz3YEPnwA0ENFU';
+    const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'testweb-9b2f8';
+    const API_KEY    = process.env.FIREBASE_API_KEY    || 'AIzaSyACJjz3XP7vbzxkeZmW_sCXKurAFXZ_vwU';
     const now        = new Date();
 
     // Cek reset periode dulu
