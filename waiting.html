@@ -44,8 +44,14 @@
 </head>
 <body>
 <div class="container">
+  <!-- LOADING -->
+  <div id="screen-loading" style="text-align:center">
+    <div style="font-size:2rem;margin-bottom:12px">⏳</div>
+    <div style="font-size:.85rem;font-weight:700;color:rgba(240,235,248,.5)">Memuat status order...</div>
+  </div>
+
   <!-- WAITING PAYMENT -->
-  <div id="screen-payment">
+  <div id="screen-payment" style="display:none">
     <div class="status-title yellow">⏳ Menunggu Konfirmasi Pembayaran</div>
     <div class="talent-card">
       <div id="talent-img-wrap2"><div class="talent-img-ph">👤</div></div>
@@ -61,7 +67,7 @@
   </div>
 
   <!-- PENDING (setelah bayar) -->
-  <div id="screen-pending" style="display:none">
+  <div id="screen-pending" style="display:none"><!-- dihandle oleh show() -->
     <div class="status-title green">🔔 Notifikasi Order Sudah Dikirim ke Talent</div>
     <div class="talent-card">
       <div id="talent-img-wrap"><div class="talent-img-ph">👤</div></div>
@@ -110,12 +116,12 @@ import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12
 import { getFirestore, doc, onSnapshot, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const FIREBASE_CONFIG = {
-  apiKey      : 'AIzaSyBLPe_yx28LyefI856Ysxz3YEPnwA0ENFU',
-  authDomain  : 'callpay-28a28.firebaseapp.com',
-  projectId   : 'callpay-28a28',
-  storageBucket: 'callpay-28a28.firebasestorage.app',
-  messagingSenderId: '44722427776',
-  appId       : '1:44722427776:web:29d1a297746cd83d685365'
+  apiKey      : 'AIzaSyACJjz3XP7vbzxkeZmW_sCXKurAFXZ_vwU',
+  authDomain  : 'testweb-9b2f8.firebaseapp.com',
+  projectId   : 'testweb-9b2f8',
+  storageBucket: 'testweb-9b2f8.firebasestorage.app',
+  messagingSenderId: '223987046525',
+  appId       : '1:223987046525:web:9434307a1fe9e9cc147914'
 };
 
 const app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
@@ -146,7 +152,7 @@ function fmt(s){ return Math.floor(s/60)+':'+(s%60).toString().padStart(2,'0'); 
 function goHome(){ window.location.href = homeUrl; }
 
 function show(name){
-  ['payment','pending','accepted','rejected'].forEach(s=>{
+  ['loading','payment','pending','accepted','rejected'].forEach(s=>{
     const el = document.getElementById('screen-'+s);
     if(el) el.style.display = s===name ? 'block' : 'none';
   });
@@ -262,39 +268,30 @@ async function autoConfirmPayment() {
 
 // ── MAIN: Realtime listener langsung ke Firestore ──
 if (orderId) {
-  // Konfirmasi pembayaran kalau dari redirect Midtrans
-  confirmPaymentIfNeeded();
-
-  // Auto confirm setelah 10 detik kalau masih di screen payment (untuk mobile)
-  setTimeout(() => {
-    const paymentScreen = document.getElementById('screen-payment');
-    if (paymentScreen && paymentScreen.style.display !== 'none') {
-      autoConfirmPayment();
-    }
-  }, 10000);
+  // Sembunyikan semua screen dulu, tampilkan loading
+  show('loading');
 
   // Cleanup order lama (fire and forget)
   fetch(`${BASE}/api/expire-orders`).catch(()=>{});
 
-  // Realtime listener — tidak perlu polling sama sekali!
+  // Realtime listener
   const orderRef = doc(db, 'orders', orderId);
   unsubscribe = onSnapshot(orderRef, (snap) => {
     if (!snap.exists()) {
       console.log('Order not found');
-      show('payment');
+      show('pending'); // order voucher langsung pending
       return;
     }
     handleOrderStatus(snap.data());
   }, (error) => {
     console.error('Listener error:', error);
-    // Fallback: cek sekali saja
     getDoc(orderRef).then(snap => {
       if (snap.exists()) handleOrderStatus(snap.data());
     });
   });
 
 } else {
-  show('payment');
+  show('pending');
 }
 
 // Expose ke global untuk tombol
