@@ -81,6 +81,18 @@ module.exports = async (req, res) => {
       // Update order jadi rejected
       await fsSet(`orders/${orderId}`, { ...order, status: 'rejected', respondedAt: new Date().toISOString() });
 
+      // Simpan cooldown: custWa + talentId tidak bisa order lagi selama 30 menit
+      if (order.custWa && order.talentId) {
+        const cooldownKey = `cooldowns/${order.talentId}_${order.custWa.replace(/\D/g,'')}`;
+        await fsSet(cooldownKey, {
+          talentId  : order.talentId,
+          custWa    : order.custWa,
+          rejectedAt: new Date().toISOString(),
+          expiresAt : new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          orderId,
+        });
+      }
+
       let voucherCode = null;
 
       if (order.useVoucher && order.voucherCode) {
