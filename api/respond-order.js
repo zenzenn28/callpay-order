@@ -21,6 +21,39 @@ async function setTalentOnline(talentId, online) {
   }
 }
 
+// Update poin talent di Firestore
+async function updatePoint(talentId, delta, reason) {
+  try {
+    const snap = await fsGet(`talents/${talentId}`);
+    if (!snap || !snap.fields) return;
+    const talent   = fromFirestore(snap.fields);
+    const current  = typeof talent.points === 'number' ? talent.points : 50;
+    const newPoint = Math.max(0, current + delta);
+    await fsSet(`talents/${talentId}`, { ...talent, points: newPoint });
+
+    // Simpan ke point_history
+    const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'testweb-9b2f8';
+    const API_KEY    = process.env.FIREBASE_API_KEY    || 'AIzaSyACJjz3XP7vbzxkeZmW_sCXKurAFXZ_vwU';
+    const histId     = `ph_${Date.now()}`;
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/talents/${talentId}/point_history?documentId=${histId}&key=${API_KEY}`,
+      {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ fields: {
+          delta     : { integerValue: delta },
+          total     : { integerValue: newPoint },
+          reason    : { stringValue: reason },
+          createdAt : { stringValue: new Date().toISOString() },
+        }})
+      }
+    );
+    console.log(`Point ${talentId}: ${current} → ${newPoint} (${delta > 0 ? '+' : ''}${delta}) — ${reason}`);
+  } catch(e) {
+    console.error('updatePoint error:', e.message);
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -54,6 +87,9 @@ module.exports = async (req, res) => {
     if (action === 'accept') {
       // Update order jadi accepted
       await fsSet(`orders/${orderId}`, { ...order, status: 'accepted', respondedAt: new Date().toISOString() });
+
+      // +2 poin saat terima order
+      await updatePoint(order.talentId, +2, 'Menerima order');
 
       // Kalau order pakai voucher → expired voucher tersebut
       if (order.voucherCode && order.useVoucher) {
