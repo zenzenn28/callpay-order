@@ -17,6 +17,39 @@ async function setTalentOnline(talentId, online) {
   } catch(e) { console.error('Set talent online error:', e.message); }
 }
 
+const POINT_MAX = 100;
+
+async function updateTalentPoint(talentId, delta, reason) {
+  try {
+    const snap = await fsGet(`talents/${talentId}`);
+    if (!snap || !snap.fields) return;
+    const talent  = fromFirestore(snap.fields);
+    const current = typeof talent.points === 'number' ? talent.points : 50;
+    const newPt   = Math.min(POINT_MAX, Math.max(0, current + delta));
+    await fsSet(`talents/${talentId}`, { ...talent, points: newPt });
+
+    const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'testweb-9b2f8';
+    const API_KEY    = process.env.FIREBASE_API_KEY    || 'AIzaSyACJjz3XP7vbzxkeZmW_sCXKurAFXZ_vwU';
+    const histId     = 'ph_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+    await fetch(
+      'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID + '/databases/(default)/documents/talents/' + talentId + '/point_history?documentId=' + histId + '&key=' + API_KEY,
+      {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ fields: {
+          delta    : { integerValue: String(delta) },
+          total    : { integerValue: String(newPt) },
+          reason   : { stringValue: reason },
+          createdAt: { stringValue: new Date().toISOString() },
+        }})
+      }
+    );
+    console.log('Point ' + talentId + ': ' + current + ' -> ' + newPt + ' (' + (delta>0?'+':'') + delta + ') - ' + reason);
+  } catch(e) {
+    console.error('updateTalentPoint error:', e.message);
+  }
+}
+
 function getPeriodId(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -170,7 +203,7 @@ module.exports = async (req, res) => {
         await fsSet(`orders/${docId}`, { ...order, orderId: docId, status: 'expired' });
         if (order.talentId) await setTalentOnline(order.talentId, false);
         // -10 poin karena tidak konfirmasi
-        if (order.talentId) await penaltyPoint(order.talentId);
+        if (order.talentId) await updateTalentPoint(order.talentId, -10, 'Tidak konfirmasi order (timeout)');
 
         // Kalau order pakai voucher → kembalikan voucher yang sama (reset used)
         if (order.useVoucher && order.voucherCode) {
