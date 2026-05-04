@@ -124,7 +124,7 @@ module.exports = async (req, res) => {
           talentId  : order.talentId,
           custWa    : order.custWa,
           rejectedAt: new Date().toISOString(),
-          expiresAt : new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          expiresAt : new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 jam
           orderId,
         });
       }
