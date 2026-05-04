@@ -15,25 +15,15 @@ const MIDTRANS_CLIENT  = 'Mid-client-Endj0wHvJambaZCs';
 
 // ── INJECT MODAL (ganti total isi modal-scroll) ──────────────
 function injectModalFields() {
-  // Cari scroll — bisa dengan id lama atau baru
-  const scroll = document.getElementById('patch-injected') ||
-                 document.querySelector('#order-modal .modal-scroll');
+  // Kalau sudah diinjeksi, skip
+  if (document.getElementById('vc-section')) return;
+
+  const scroll = document.querySelector('#order-modal .modal-scroll');
   if (!scroll) return;
 
-  // Jika sudah diinjeksi sebelumnya, skip rebuild (cukup reset)
-  if (scroll.id === 'patch-injected') return;
-
-  // Tandai sudah diinjeksi
-  scroll.id = 'patch-injected';
-
-  // Ambil elemen talent strip yang sudah ada
+  // Sisipkan konten baru setelah .modal-talent-strip
   const talentStrip = scroll.querySelector('.modal-talent-strip');
-
-  // Kosongkan isi modal-scroll, tapi simpan talent strip & head
-  const modalHead = scroll.querySelector('.modal-head');
-  scroll.innerHTML = '';
-  if (modalHead)    scroll.appendChild(modalHead);
-  if (talentStrip)  scroll.appendChild(talentStrip);
+  if (!talentStrip) return;
 
   // ── SECTION VOUCHER ──
   const vcSection = document.createElement('div');
@@ -53,7 +43,7 @@ function injectModalFields() {
     </div>
     <div id="voucher-msg" style="display:none;border-radius:12px;padding:14px 16px;margin-bottom:4px"></div>
   `;
-  scroll.appendChild(vcSection);
+  talentStrip.insertAdjacentElement('afterend', vcSection);
 
   // ── SECTION LAYANAN (hidden dulu) ──
   const svcSection = document.createElement('div');
@@ -66,7 +56,7 @@ function injectModalFields() {
     <textarea id="modal-note" rows="2" placeholder="Ceritakan apa yang kamu inginkan..."
       style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;padding:10px 14px;outline:none;resize:vertical;transition:border-color .2s"></textarea>
   `;
-  scroll.appendChild(svcSection);
+  vcSection.insertAdjacentElement('afterend', svcSection);
 
   // ── TOMBOL PESAN ──
   const btnWrap = document.createElement('div');
@@ -80,7 +70,7 @@ function injectModalFields() {
       🔒 Masukkan kode voucher untuk melanjutkan
     </div>
   `;
-  scroll.appendChild(btnWrap);
+  svcSection.insertAdjacentElement('afterend', btnWrap);
 
   // Pasang event tombol
   document.getElementById('modal-wa-btn').addEventListener('click', doOrder);
@@ -373,25 +363,16 @@ async function doOrder() {
 
 // ── HOOK ke openModal ────────────────────────────────────────
 function applyOverride() {
+  const _origOpenModal = window.openModal;
+
   window.openModal = function(id) {
-    // Cari talent dari global TALENTS atau activeTalent
-    const talent = (window.TALENTS || []).find(t => String(t.id) === String(id));
-    if (!talent) return;
-    window.activeTalent = talent;
+    // Panggil openModal asli — isi window.activeTalent, modal-img, modal-tname, buka modal
+    if (_origOpenModal) _origOpenModal(id);
 
-    // Set foto & nama di talent strip
-    const imgEl = document.getElementById('modal-img');
-    if (imgEl) imgEl.src = talent.img || '';
-    const nameEl = document.getElementById('modal-tname');
-    if (nameEl) nameEl.textContent = talent.name || '';
-    const metaEl = document.getElementById('modal-tmeta');
-    if (metaEl) metaEl.textContent = `${talent.age || ''} tahun · Indonesia`;
+    // window.activeTalent diset oleh openModal asli
+    if (!window.activeTalent) return;
 
-    // Buka modal
-    const modal = document.getElementById('order-modal');
-    if (modal) modal.classList.add('open');
-
-    // Inject field baru (hanya sekali)
+    // Inject form voucher (hanya sekali, sisipkan setelah talent strip)
     injectModalFields();
 
     // Reset ke state awal setiap kali modal dibuka
