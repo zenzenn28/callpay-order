@@ -80,8 +80,8 @@
     </div>
     <div class="info-box">
       <div class="info-title">Silahkan Tunggu Sampai Durasi Habis</div>
-      <div class="info-item"><span class="dot red"></span><span>Jika talent <strong>tidak konfirmasi sampai durasi habis</strong>, kamu akan diberi <strong>kode voucher</strong>.</span></div>
-      <div class="info-item"><span class="dot pink"></span><span>Jika talent <strong>menolak ordermu,</strong> kamu juga akan diberi <strong>kode voucher</strong>.</span></div>
+      <div class="info-item"><span class="dot red"></span><span>Jika talent <strong>tidak konfirmasi sampai waktu habis</strong>, voucher kamu <strong>aktif kembali</strong> dan bisa digunakan ke talent lain.</span></div>
+      <div class="info-item"><span class="dot pink"></span><span>Jika talent <strong>menolak ordermu,</strong> voucher kamu juga <strong>aktif kembali</strong>.</span></div>
       <div class="info-item"><span class="dot pink"></span><span>Jika talent <strong>menerima ordermu,</strong> talent akan <strong>menghubungimu melalui WhatsApp</strong>.</span></div>
     </div>
   </div>
@@ -100,11 +100,11 @@
     <div class="result-icon">😔</div>
     <div class="status-title red" id="rej-title">Order Ditolak</div>
     <div class="result-title" id="rej-subtitle">Talent tidak bisa menerima ordermu saat ini</div>
-    <div class="result-sub">Tenang, kamu mendapatkan kode voucher yang bisa digunakan untuk order talent lain.</div>
+    <div class="result-sub">Tenang, voucher kamu aktif kembali dan bisa digunakan untuk order ke talent lain.</div>
     <div class="voucher-box">
       <div class="voucher-label">Kode Voucher Kamu</div>
       <div class="voucher-code" id="voucher-code">Memuat...</div>
-      <div class="voucher-note">Berlaku untuk layanan & durasi yang sama · Sekali pakai</div>
+      <div class="voucher-note" id="voucher-note">Gunakan kode voucher yang sama untuk order ke talent lain.</div>
     </div>
     <button class="btn btn-copy" onclick="copyVoucher()">📋 Salin Kode Voucher</button>
     <button class="btn" onclick="goHome()">← Pilih Talent Lain</button>
@@ -164,14 +164,34 @@ function startTimer(expiredAt){
   show('pending');
   const exp = new Date(expiredAt);
   clearInterval(timerInt);
-  timerInt = setInterval(()=>{
+  timerInt = setInterval(async ()=>{
     const sLeft = Math.max(0, Math.floor((exp - new Date()) / 1000));
     document.getElementById('timer').textContent = fmt(sLeft);
     document.getElementById('prog').style.width  = (sLeft/TOTAL*100)+'%';
     if(sLeft <= 0){
       clearInterval(timerInt);
-      // Trigger expire di server
-      fetch(`${BASE}/api/expire-orders`).catch(()=>{});
+      // Trigger expire di server lalu tampilkan screen rejected
+      try { await fetch(`${BASE}/api/expire-orders`); } catch(e){}
+      // Voucher dikembalikan = bisa dipakai lagi di talent lain
+      if(unsubscribe) unsubscribe();
+      document.getElementById('rej-title').textContent    = 'Waktu Habis';
+      document.getElementById('rej-subtitle').textContent = 'Talent tidak merespons dalam 2 menit';
+      document.getElementById('voucher-code').textContent = 'Voucher kamu aktif kembali!';
+      document.getElementById('voucher-note').textContent = 'Gunakan kode voucher yang sama untuk order ke talent lain.';
+      show('rejected');
+      // Update voucher code dari Firestore (ambil kode asli dari URL)
+      const params = new URLSearchParams(window.location.search);
+      const oid = params.get('orderId');
+      if(oid){
+        // Ambil voucherCode dari order
+        try {
+          const oSnap = await getDoc(doc(db, 'orders', oid));
+          if(oSnap.exists()){
+            const vCode = oSnap.data().voucherCode;
+            if(vCode) document.getElementById('voucher-code').textContent = vCode;
+          }
+        } catch(e){ console.error(e); }
+      }
     }
   }, 500);
 }
