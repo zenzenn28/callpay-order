@@ -169,6 +169,8 @@ module.exports = async (req, res) => {
       if (status === 'pending' && expiredAt && expiredAt <= now) {
         await fsSet(`orders/${docId}`, { ...order, orderId: docId, status: 'expired' });
         if (order.talentId) await setTalentOnline(order.talentId, false);
+        // -10 poin karena tidak konfirmasi
+        if (order.talentId) await penaltyPoint(order.talentId);
 
         // Kalau order pakai voucher → kembalikan voucher yang sama (reset used)
         if (order.useVoucher && order.voucherCode) {
