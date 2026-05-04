@@ -70,9 +70,8 @@ function injectModalFields() {
   btnWrap.style.cssText = 'margin-top:16px';
   btnWrap.innerHTML = `
     <button id="modal-wa-btn" disabled
-      style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#25D366;color:#fff;border:none;padding:13px;border-radius:12px;font-size:.95rem;font-weight:800;transition:opacity .2s,transform .2s;box-shadow:0 4px 18px rgba(37,211,102,.3);cursor:not-allowed;opacity:.4;font-family:'Nunito',sans-serif">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20" fill="white"><path d="M24 4C13 4 4 13 4 24c0 3.6 1 7 2.7 9.9L4 44l10.4-2.7C17.2 43 20.5 44 24 44c11 0 20-9 20-20S35 4 24 4zm0 36c-3.1 0-6.1-.8-8.7-2.4l-.6-.4-6.2 1.6 1.7-6-.4-.6C8.8 30.1 8 27.1 8 24 8 15.2 15.2 8 24 8s16 7.2 16 16-7.2 16-16 16zm8.7-11.8c-.5-.2-2.8-1.4-3.2-1.5-.4-.2-.7-.2-1 .2-.3.4-1.2 1.5-1.4 1.8-.3.3-.5.4-1 .1-.5-.2-2-.7-3.8-2.3-1.4-1.2-2.3-2.8-2.6-3.2-.3-.5 0-.7.2-1 .2-.2.5-.5.7-.8.2-.3.3-.5.4-.8.1-.3 0-.6-.1-.8-.1-.2-1-2.5-1.4-3.4-.4-.9-.8-.8-1-.8h-.9c-.3 0-.8.1-1.2.6-.4.5-1.6 1.6-1.6 3.8s1.7 4.4 1.9 4.7c.2.3 3.3 5.1 8.1 7.1 1.1.5 2 .8 2.7 1 1.1.3 2.2.3 3 .2.9-.1 2.8-1.1 3.2-2.2.4-1.1.4-2 .3-2.2-.2-.3-.5-.4-1-.6z"/></svg>
-      Pesan Sekarang
+      style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#E8628A,#F9A8C9);color:#fff;border:none;padding:13px;border-radius:12px;font-size:.95rem;font-weight:800;transition:opacity .2s,transform .2s;box-shadow:0 4px 18px rgba(232,98,138,.3);cursor:not-allowed;opacity:.4;font-family:'Nunito',sans-serif">
+      🎀 Pesan Sekarang
     </button>
     <div id="btn-hint" style="text-align:center;margin-top:8px;font-size:.75rem;font-weight:700;color:rgba(240,235,248,.35)">
       🔒 Masukkan kode voucher untuk melanjutkan
