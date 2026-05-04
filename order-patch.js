@@ -312,16 +312,14 @@ async function doOrder() {
   const voucher = _activeVoucherCode;
   const vd      = _voucherData;
 
-  if (!talent)  { alert('Pilih talent dulu!'); return; }
-  if (!voucher) { alert('Masukkan kode voucher terlebih dahulu!'); return; }
+  if (!talent)       { alert('Pilih talent dulu!'); return; }
+  if (!voucher)      { alert('Masukkan kode voucher terlebih dahulu!'); return; }
   if (!_selectedSvc) { alert('Pilih layanan terlebih dahulu!'); return; }
 
   const svcLabel = _selectedSvcLabel;
-  const durInt   = _selectedDur || Number(vd?.duration) || 0;
+  const durInt   = _selectedDur || 0;
   const price    = Number(vd?.price) || 0;
-
-  // Nomor WA dari voucher
-  let custWa = vd?.custWa ? vd.custWa.toString().replace(/\D/g,'') : '';
+  const custWa   = vd?.custWa ? String(vd.custWa).replace(/\D/g,'') : '';
 
   const btn = document.getElementById('modal-wa-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
@@ -340,7 +338,7 @@ async function doOrder() {
         custWa,
         note,
         voucherCode: voucher,
-        adminParam : window._adminParam || 'callpay',
+        adminParam : window._adminParam || 'admin1',
       })
     });
 
@@ -352,7 +350,7 @@ async function doOrder() {
       return;
     }
 
-    // Tutup modal
+    // Tutup modal & arahkan ke waiting page
     const modal = document.getElementById('order-modal');
     if (modal) modal.classList.remove('open');
 
