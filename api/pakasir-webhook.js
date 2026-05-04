@@ -72,6 +72,24 @@ module.exports = async (req, res) => {
       completedAt: now,
     });
 
+    // Tambah ke collection orders agar muncul di log aktivitas admin
+    await fsSet(`orders/${order_id}`, {
+      orderId    : order_id,
+      type       : 'voucher_purchase',   // tanda ini pembelian voucher, bukan order talent
+      voucherCode,
+      price      : Number(pending.nominal),
+      bayar      : Number(pending.bayar || pending.nominal),
+      custWa     : pending.custWa || '',
+      adminParam : pending.adminParam || 'admin1',
+      status     : 'completed',
+      useVoucher : false,
+      createdAt  : now,
+      completedAt: now,
+      talentName : '—',
+      service    : 'Pembelian Voucher',
+      duration   : '0',
+    });
+
     console.log(`Voucher ${voucherCode} generated untuk order ${order_id} (Rp ${pending.nominal})`);
 
     return res.status(200).json({ success: true, voucherCode });
