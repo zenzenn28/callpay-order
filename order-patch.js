@@ -15,13 +15,16 @@ const MIDTRANS_CLIENT  = 'Mid-client-Endj0wHvJambaZCs';
 
 // ── INJECT MODAL (ganti total isi modal-scroll) ──────────────
 function injectModalFields() {
-  if (document.getElementById('patch-injected')) return;
-
-  const scroll = document.querySelector('#order-modal .modal-scroll');
+  // Cari scroll — bisa dengan id lama atau baru
+  const scroll = document.getElementById('patch-injected') ||
+                 document.querySelector('#order-modal .modal-scroll');
   if (!scroll) return;
 
+  // Jika sudah diinjeksi sebelumnya, skip rebuild (cukup reset)
+  if (scroll.id === 'patch-injected') return;
+
   // Tandai sudah diinjeksi
-  scroll.setAttribute('id', 'patch-injected');
+  scroll.id = 'patch-injected';
 
   // Ambil elemen talent strip yang sudah ada
   const talentStrip = scroll.querySelector('.modal-talent-strip');
@@ -370,10 +373,23 @@ async function doOrder() {
 
 // ── HOOK ke openModal ────────────────────────────────────────
 function applyOverride() {
-  const _origOpenModal = window.openModal;
   window.openModal = function(id) {
-    // Panggil openModal asli dulu (isi talent strip, dll)
-    if (_origOpenModal) _origOpenModal(id);
+    // Cari talent dari global TALENTS atau activeTalent
+    const talent = (window.TALENTS || []).find(t => String(t.id) === String(id));
+    if (!talent) return;
+    window.activeTalent = talent;
+
+    // Set foto & nama di talent strip
+    const imgEl = document.getElementById('modal-img');
+    if (imgEl) imgEl.src = talent.img || '';
+    const nameEl = document.getElementById('modal-tname');
+    if (nameEl) nameEl.textContent = talent.name || '';
+    const metaEl = document.getElementById('modal-tmeta');
+    if (metaEl) metaEl.textContent = `${talent.age || ''} tahun · Indonesia`;
+
+    // Buka modal
+    const modal = document.getElementById('order-modal');
+    if (modal) modal.classList.add('open');
 
     // Inject field baru (hanya sekali)
     injectModalFields();
