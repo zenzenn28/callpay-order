@@ -28,7 +28,7 @@ async function updatePoint(talentId, delta, reason) {
     if (!snap || !snap.fields) return;
     const talent   = fromFirestore(snap.fields);
     const current  = typeof talent.points === 'number' ? talent.points : 50;
-    const newPoint = Math.max(0, current + delta);
+    const newPoint = Math.min(100, Math.max(0, current + delta)); // maks 100
     await fsSet(`talents/${talentId}`, { ...talent, points: newPoint });
 
     // Simpan ke point_history
