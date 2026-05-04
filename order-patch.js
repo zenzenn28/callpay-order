@@ -29,19 +29,19 @@ function injectModalFields() {
   const vcSection = document.createElement('div');
   vcSection.id = 'vc-section';
   vcSection.innerHTML = `
-    <div style="margin-bottom:6px;font-size:.72rem;font-weight:900;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.06em">Masukkan Kode Voucher</div>
-    <div style="font-size:.78rem;color:rgba(240,235,248,.35);font-weight:600;margin-bottom:12px">Masukkan kode voucher yang kamu beli dari admin.</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <input type="text" id="modal-voucher" placeholder="Masukkan kode voucher"
-        style="flex:1;padding:11px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;outline:none;text-transform:uppercase;transition:border-color .2s"
+    <div style="margin-bottom:4px;font-size:.7rem;font-weight:900;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.06em">Masukkan Kode Voucher</div>
+    <div style="font-size:.75rem;color:rgba(240,235,248,.35);font-weight:600;margin-bottom:10px">Masukkan kode voucher yang kamu beli dari admin.</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input type="text" id="modal-voucher" placeholder="Kode voucher"
+        style="flex:1;padding:10px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;outline:none;text-transform:uppercase;transition:border-color .2s;min-width:0"
         oninput="this.value=this.value.toUpperCase()">
       <button id="btn-gunakan" onclick="window.checkVoucher()"
-        style="padding:11px 18px;border-radius:10px;background:transparent;border:2px solid #FFB800;color:#FFB800;font-family:'Nunito',sans-serif;font-weight:900;font-size:.88rem;cursor:pointer;white-space:nowrap;transition:all .2s"
+        style="padding:10px 14px;border-radius:10px;background:transparent;border:2px solid #FFB800;color:#FFB800;font-family:'Nunito',sans-serif;font-weight:900;font-size:.82rem;cursor:pointer;white-space:nowrap;transition:all .2s;flex-shrink:0"
         onmouseover="this.style.background='rgba(255,184,0,.1)'" onmouseout="this.style.background='transparent'">
         Gunakan
       </button>
     </div>
-    <div id="voucher-msg" style="display:none;border-radius:12px;padding:14px 16px;margin-bottom:4px"></div>
+    <div id="voucher-msg" style="display:none;border-radius:10px;padding:10px 12px;margin-bottom:4px"></div>
   `;
   talentStrip.insertAdjacentElement('afterend', vcSection);
 
@@ -50,20 +50,20 @@ function injectModalFields() {
   svcSection.id = 'svc-section';
   svcSection.style.display = 'none';
   svcSection.innerHTML = `
-    <div style="margin-top:18px;margin-bottom:8px;font-size:.72rem;font-weight:900;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.06em">Pilih Layanan</div>
-    <div id="svc-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div style="margin-top:14px;margin-bottom:6px;font-size:.7rem;font-weight:900;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.06em">Pilih Layanan</div>
+    <div id="svc-list" style="display:flex;flex-direction:column;gap:6px"></div>
     <div style="margin-top:14px;margin-bottom:6px;font-size:.72rem;font-weight:900;color:rgba(240,235,248,.5);text-transform:uppercase;letter-spacing:.06em">Catatan (opsional)</div>
     <textarea id="modal-note" rows="2" placeholder="Ceritakan apa yang kamu inginkan..."
-      style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;padding:10px 14px;outline:none;resize:vertical;transition:border-color .2s"></textarea>
+      style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0EBF8;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;padding:8px 12px;outline:none;resize:none;transition:border-color .2s"></textarea>
   `;
   vcSection.insertAdjacentElement('afterend', svcSection);
 
   // ── TOMBOL PESAN ──
   const btnWrap = document.createElement('div');
-  btnWrap.style.cssText = 'margin-top:16px';
+  btnWrap.style.cssText = 'margin-top:12px';
   btnWrap.innerHTML = `
     <button id="modal-wa-btn" disabled
-      style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#E8628A,#F9A8C9);color:#fff;border:none;padding:13px;border-radius:12px;font-size:.95rem;font-weight:800;transition:opacity .2s,transform .2s;box-shadow:0 4px 18px rgba(232,98,138,.3);cursor:not-allowed;opacity:.4;font-family:'Nunito',sans-serif">
+      style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#E8628A,#F9A8C9);color:#fff;border:none;padding:12px;border-radius:12px;font-size:.88rem;font-weight:800;transition:opacity .2s,transform .2s;box-shadow:0 4px 18px rgba(232,98,138,.3);cursor:not-allowed;opacity:.4;font-family:'Nunito',sans-serif">
       🎀 Pesan Sekarang
     </button>
     <div id="btn-hint" style="text-align:center;margin-top:8px;font-size:.75rem;font-weight:700;color:rgba(240,235,248,.35)">
@@ -229,11 +229,11 @@ function renderServiceList(voucherData) {
     row.dataset.svc  = key;
     row.dataset.svcLabel = svc;
     row.dataset.dur  = dur;
-    row.style.cssText = `display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;border:2px solid ${selected ? 'rgba(167,139,250,.6)' : 'rgba(255,255,255,.08)'};background:${selected ? 'rgba(167,139,250,.08)' : 'rgba(255,255,255,.03)'};cursor:pointer;transition:all .2s`;
+    row.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:2px solid ${selected ? 'rgba(167,139,250,.6)' : 'rgba(255,255,255,.08)'};background:${selected ? 'rgba(167,139,250,.08)' : 'rgba(255,255,255,.03)'};cursor:pointer;transition:all .2s`;
 
     row.innerHTML = `
       <span style="font-size:1.2rem;flex-shrink:0">${icon}</span>
-      <span style="flex:1;font-size:.9rem;font-weight:800">${svc}</span>
+      <span style="flex:1;font-size:.85rem;font-weight:800">${svc}</span>
       <span style="font-size:.78rem;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.08);color:rgba(240,235,248,.6)">${dur} menit</span>
       <div style="width:22px;height:22px;border-radius:50%;border:2px solid ${selected ? '#a78bfa' : 'rgba(255,255,255,.2)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${selected ? '#a78bfa' : 'transparent'}">
         ${selected ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="white"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>' : ''}
