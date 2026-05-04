@@ -316,6 +316,25 @@ async function doOrder() {
   const btn = document.getElementById('modal-wa-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
 
+  // Cek cooldown dulu
+  if (custWa) {
+    try {
+      const cdRes  = await fetch(`${API_BASE}/api/check-cooldown?talentId=${encodeURIComponent(String(talent._docId||talent.id))}&custWa=${encodeURIComponent(custWa)}`);
+      const cdData = await cdRes.json();
+      if (cdData.cooldown) {
+        if (btn) { btn.disabled = false; btn.textContent = '🎀 Pesan Sekarang'; }
+        const msgEl = document.getElementById('voucher-msg');
+        if (msgEl) {
+          msgEl.style.display    = 'block';
+          msgEl.style.background = 'rgba(255,92,92,.06)';
+          msgEl.style.border     = '1px solid rgba(255,92,92,.25)';
+          msgEl.innerHTML = `<span style="color:#FF5C5C;font-size:.82rem;font-weight:700">⏳ Kamu baru saja menolak talent ini. Coba lagi dalam <b>${cdData.sisaMenit} menit</b>.</span>`;
+        }
+        return;
+      }
+    } catch(e) { /* Kalau gagal cek, lanjut saja */ }
+  }
+
   try {
     const res = await fetch(`${API_BASE}/api/order`, {
       method : 'POST',
@@ -350,6 +369,7 @@ async function doOrder() {
       `?orderId=${encodeURIComponent(data.orderId)}` +
       `&talentName=${encodeURIComponent(talent.name)}` +
       `&talentImg=${encodeURIComponent(talent.img||'')}` +
+      `&voucherCode=${encodeURIComponent(voucher)}` +
       `&home=${encodeURIComponent(window.location.href)}`;
 
     window.location.href = waitUrl;
