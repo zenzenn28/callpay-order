@@ -208,7 +208,9 @@ function renderServiceList(voucherData) {
   const talent   = window.activeTalent;
   const services = (talent?.services || []).filter(s => !(talent?.lockedServices||[]).includes(s));
 
-  // Ikon per layanan
+  // durMap: { 'Temen Call': 30, 'Sleepcall': 30, 'Temen Curhat': 20, ... }
+  const durMap = voucherData.durMap || {};
+
   const ICONS = {
     'Sleepcall'    : '🌙',
     'Temen Call'   : '📞',
@@ -217,51 +219,62 @@ function renderServiceList(voucherData) {
     'Video Call'   : '📹',
   };
 
-  // Durasi dari voucher (dalam menit)
-  const voucherDur = Number(voucherData.duration) || 0;
-
   list.innerHTML = '';
   let firstSelected = false;
 
   services.forEach(svc => {
+    // Hanya tampilkan layanan yang ada durasi di durMap
+    const dur = durMap[svc];
+    if (!dur) return; // layanan ini tidak tersedia di nominal voucher ini
+
     const icon    = ICONS[svc] || '🎯';
     const key     = window.SVC_LABEL_TO_KEY?.[svc] || svc.toLowerCase().replace(/\s+/g,'-');
-    const isMatch = voucherData.service && svc.toLowerCase() === voucherData.service.toLowerCase();
-
-    // Pre-select layanan yang sesuai voucher
-    const selected = isMatch && !firstSelected;
+    const selected = !firstSelected; // pre-select yang pertama
     if (selected) firstSelected = true;
 
     const row = document.createElement('div');
     row.className    = 'svc-row-item';
     row.dataset.svc  = key;
     row.dataset.svcLabel = svc;
+    row.dataset.dur  = dur;
     row.style.cssText = `display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;border:2px solid ${selected ? 'rgba(167,139,250,.6)' : 'rgba(255,255,255,.08)'};background:${selected ? 'rgba(167,139,250,.08)' : 'rgba(255,255,255,.03)'};cursor:pointer;transition:all .2s`;
 
     row.innerHTML = `
       <span style="font-size:1.2rem;flex-shrink:0">${icon}</span>
       <span style="flex:1;font-size:.9rem;font-weight:800">${svc}</span>
-      ${voucherDur ? `<span style="font-size:.78rem;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.08);color:rgba(240,235,248,.6)">${voucherDur} menit</span>` : ''}
+      <span style="font-size:.78rem;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.08);color:rgba(240,235,248,.6)">${dur} menit</span>
       <div style="width:22px;height:22px;border-radius:50%;border:2px solid ${selected ? '#a78bfa' : 'rgba(255,255,255,.2)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${selected ? '#a78bfa' : 'transparent'}">
         ${selected ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="white"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>' : ''}
       </div>
     `;
 
-    row.addEventListener('click', () => selectService(row, key, svc));
+    row.addEventListener('click', () => selectService(row, key, svc, dur));
     list.appendChild(row);
   });
 
-  // Jika ada pre-select, aktifkan tombol pesan
+  if (!list.children.length) {
+    list.innerHTML = '<div style="font-size:.82rem;color:rgba(240,235,248,.4);font-weight:600;padding:8px 0">Tidak ada layanan tersedia untuk voucher ini di talent ini.</div>';
+  }
+
   if (firstSelected) {
-    enableOrderBtn();
+    // Set selected state untuk row pertama
+    const firstRow = list.querySelector('.svc-row-item');
+    if (firstRow) {
+      _selectedSvc      = firstRow.dataset.svc;
+      _selectedSvcLabel = firstRow.dataset.svcLabel;
+      _selectedDur      = Number(firstRow.dataset.dur);
+      enableOrderBtn();
+    }
   }
 }
 
 // ── PILIH LAYANAN ────────────────────────────────────────────
 let _selectedSvc = '';
 let _selectedSvcLabel = '';
+let _selectedDur = 0;
 
-function selectService(el, key, label) {
+function selectService(el, key, label, dur) {
+  _selectedDur = Number(dur) || 0;
   // Reset semua row
   document.querySelectorAll('.svc-row-item').forEach(r => {
     r.style.border     = '2px solid rgba(255,255,255,.08)';
@@ -304,8 +317,8 @@ async function doOrder() {
   if (!_selectedSvc) { alert('Pilih layanan terlebih dahulu!'); return; }
 
   const svcLabel = _selectedSvcLabel;
-  const durInt   = Number(vd?.duration) || 0;
-  const price    = Number(vd?.price)    || 0;
+  const durInt   = _selectedDur || Number(vd?.duration) || 0;
+  const price    = Number(vd?.price) || 0;
 
   // Nomor WA dari voucher
   let custWa = vd?.custWa ? vd.custWa.toString().replace(/\D/g,'') : '';
