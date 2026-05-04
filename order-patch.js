@@ -216,6 +216,15 @@ window.checkVoucher = async function() {
   }
 };
 
+// Format durasi: ≤90 menit → "X menit", >90 → "X jam" atau "X jam Y menit"
+function formatDur(menit) {
+  const m = Number(menit);
+  if (m <= 90) return m + ' menit';
+  const jam  = Math.floor(m / 60);
+  const sisa = m % 60;
+  return sisa > 0 ? `${jam} jam ${sisa} menit` : `${jam} jam`;
+}
+
 // ── RENDER PILIHAN LAYANAN ───────────────────────────────────
 function renderServiceList(voucherData) {
   const list = document.getElementById('svc-list');
