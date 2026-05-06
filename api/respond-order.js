@@ -90,6 +90,8 @@ module.exports = async (req, res) => {
 
       // +2 poin saat terima order
       await updatePoint(order.talentId, +2, 'Menerima order');
+      // Activity log
+      try { await fsSet(`activity_logs/al_${Date.now()}_a`, { type:'order_accepted', description:`Talent "${order.talentName||order.talentId}" menerima order`, detail:`Layanan: ${order.service} · Durasi: ${order.duration} mnt · Rp ${order.price}`, createdAt: new Date().toISOString() }); } catch(e){}
 
       // Kalau order pakai voucher → expired voucher tersebut
       if (order.voucherCode && order.useVoucher) {
