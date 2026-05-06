@@ -79,6 +79,16 @@ function injectModalFields() {
   document.getElementById('modal-wa-btn').addEventListener('click', doOrder);
 }
 
+// ── BELI VOUCHER shortcut ────────────────────────────────────
+window.belDisini = function(e) {
+  if (e) e.preventDefault();
+  const modal = document.getElementById("order-modal");
+  if (modal) modal.classList.remove("open");
+  const admin = window._adminParam || "admin1";
+  const base  = window.location.href.replace(/[^/]*$/, "");
+  window.location.href = base + "beli-voucher.html?admin=" + admin;
+};
+
 // ── RESET modal ke state awal ────────────────────────────────
 function resetModal() {
   _activeVoucherCode = '';
