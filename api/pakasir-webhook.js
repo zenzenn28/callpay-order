@@ -92,6 +92,16 @@ module.exports = async (req, res) => {
 
     console.log(`Voucher ${voucherCode} generated untuk order ${order_id} (Rp ${pending.nominal})`);
 
+    // Catat ke activity log
+    try {
+      await fsSet(`activity_logs/al_${Date.now()}`, {
+        type       : 'voucher_purchase',
+        description: `Voucher dibeli via Pak Kasir`,
+        detail     : `Kode: ${voucherCode} · Nominal: Rp ${Number(pending.nominal).toLocaleString('id')} · WA: ${pending.custWa||'-'}`,
+        createdAt  : now,
+      });
+    } catch(e) { console.warn('activity log error:', e.message); }
+
     return res.status(200).json({ success: true, voucherCode });
 
   } catch(e) {
