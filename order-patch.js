@@ -69,6 +69,9 @@ function injectModalFields() {
     <div id="btn-hint" style="text-align:center;margin-top:8px;font-size:.75rem;font-weight:700;color:rgba(240,235,248,.35)">
       🔒 Masukkan kode voucher untuk melanjutkan
     </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);text-align:center;font-size:.78rem;font-weight:700;color:rgba(240,235,248,.35)">
+      Belum punya voucher? <a id="beli-disini-link" href="#" style="color:#FFB800;font-weight:900;text-decoration:underline;text-underline-offset:3px" onclick="belDisini(event)">Beli di sini</a>
+    </div>
   `;
   svcSection.insertAdjacentElement('afterend', btnWrap);
 
