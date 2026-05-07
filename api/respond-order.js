@@ -1,11 +1,20 @@
 // api/respond-order.js - Talent terima atau tolak order
-const { fsGet, fsSet, fsQuery, fromFirestore } = require('../lib/firebase');
+const { fsGet, fsSet, fromFirestore } = require('../lib/firebase');
 
 function generateVoucher() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'VC-';
   for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+}
+
+// Normalisasi nomor WA → selalu format 62xxx
+function normalizeWa(wa) {
+  if (!wa) return '';
+  let num = String(wa).replace(/\D/g, '');
+  if (num.startsWith('0')) num = '62' + num.slice(1);
+  if (!num.startsWith('62')) num = '62' + num;
+  return num;
 }
 
 // Set talent online/offline di Firestore
@@ -28,7 +37,7 @@ async function updatePoint(talentId, delta, reason) {
     if (!snap || !snap.fields) return;
     const talent   = fromFirestore(snap.fields);
     const current  = typeof talent.points === 'number' ? talent.points : 50;
-    const newPoint = Math.min(100, Math.max(0, current + delta)); // maks 100
+    const newPoint = Math.min(100, Math.max(0, current + delta));
     await fsSet(`talents/${talentId}`, { ...talent, points: newPoint });
 
     // Simpan ke point_history
@@ -73,16 +82,27 @@ module.exports = async (req, res) => {
 
     if (new Date() > new Date(order.expiredAt)) {
       await fsSet(`orders/${orderId}`, { ...order, status: 'expired' });
-      // Auto offline talent kalau expired
       if (order.talentId) await setTalentOnline(order.talentId, false);
-      const vCode = generateVoucher();
-      await fsSet(`vouchers/${vCode}`, {
-        code: vCode, service: order.service, duration: order.duration,
-        used: false, createdAt: new Date().toISOString(),
-        reason: 'expired', custWa: order.custWa, originalOrder: orderId,
-      });
-      return res.status(400).json({ error: 'Order sudah expired', voucherCode: vCode });
+      // Kalau expired dan pakai voucher → reset voucher agar bisa dipakai lagi
+      if (order.voucherCode && order.useVoucher) {
+        try {
+          const vSnap = await fsGet(`vouchers/${order.voucherCode}`);
+          if (vSnap && vSnap.fields) {
+            const vData = fromFirestore(vSnap.fields);
+            await fsSet(`vouchers/${order.voucherCode}`, {
+              ...vData,
+              used     : false,
+              usedAt   : null,
+              usedOrder: null,
+            });
+          }
+        } catch(e) { console.error('Reset voucher on expire error:', e.message); }
+      }
+      return res.status(400).json({ error: 'Order sudah expired', voucherCode: order.voucherCode || null });
     }
+
+    // Normalisasi custWa order — pastikan selalu 62xxx
+    const custWaClean = normalizeWa(order.custWa);
 
     if (action === 'accept') {
       // Update order jadi accepted
@@ -90,10 +110,19 @@ module.exports = async (req, res) => {
 
       // +2 poin saat terima order
       await updatePoint(order.talentId, +2, 'Menerima order');
-      // Activity log
-      try { await fsSet(`activity_logs/al_${Date.now()}_a`, { type:'order_accepted', description:`Talent "${order.talentName||order.talentId}" menerima order`, detail:`Layanan: ${order.service} · Durasi: ${order.duration} mnt · Rp ${order.price}`, createdAt: new Date().toISOString() }); } catch(e){}
 
-      // Kalau order pakai voucher → expired voucher tersebut
+      // Activity log
+      try {
+        await fsSet(`activity_logs/al_${Date.now()}_a`, {
+          type       : 'order_accepted',
+          description: `Talent "${order.talentName || order.talentId}" menerima order`,
+          detail     : `Layanan: ${order.service} · Durasi: ${order.duration} mnt · Rp ${order.price}`,
+          createdAt  : new Date().toISOString()
+        });
+      } catch(e) {}
+
+      // Voucher sudah ditandai `used: true` saat order dibuat di order.js
+      // Tidak perlu set ulang — cukup pastikan acceptedBy tercatat
       if (order.voucherCode && order.useVoucher) {
         try {
           const vSnap = await fsGet(`vouchers/${order.voucherCode}`);
@@ -102,53 +131,58 @@ module.exports = async (req, res) => {
             await fsSet(`vouchers/${order.voucherCode}`, {
               ...vData,
               used      : true,
-              usedAt    : new Date().toISOString(),
+              usedAt    : vData.usedAt || new Date().toISOString(),
               usedOrder : orderId,
               acceptedBy: order.talentId,
             });
           }
-        } catch(e) { console.error('Expire voucher error:', e.message); }
+        } catch(e) { console.error('Update voucher on accept error:', e.message); }
       }
 
       // Auto offline talent — sedang dalam layanan
       if (order.talentId) await setTalentOnline(order.talentId, false);
 
-      return res.status(200).json({ success: true, status: 'accepted', custWa: order.custWa, price: order.originalPrice || order.price || 0 });
+      return res.status(200).json({
+        success: true,
+        status : 'accepted',
+        custWa : custWaClean,
+        price  : order.originalPrice || order.price || 0
+      });
 
     } else if (action === 'reject') {
       // Update order jadi rejected
       await fsSet(`orders/${orderId}`, { ...order, status: 'rejected', respondedAt: new Date().toISOString() });
 
-      // Simpan cooldown: custWa + talentId tidak bisa order lagi selama 30 menit
-      if (order.custWa && order.talentId) {
-        const cooldownKey = `cooldowns/${order.talentId}_${order.custWa.replace(/\D/g,'')}`;
+      // ── Simpan cooldown: format key pakai WA yang sudah dinormalisasi ──
+      // Key: cooldowns/{talentId}_{custWa62xxx}
+      if (custWaClean && order.talentId) {
+        const cooldownKey = `cooldowns/${order.talentId}_${custWaClean}`;
         await fsSet(cooldownKey, {
           talentId  : order.talentId,
-          custWa    : order.custWa,
+          custWa    : custWaClean,           // simpan dalam format 62xxx
           rejectedAt: new Date().toISOString(),
           expiresAt : new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 jam
           orderId,
         });
+        console.log(`Cooldown set: ${cooldownKey} expires in 1 hour`);
       }
 
+      // ── Reset voucher agar bisa dipakai ke talent lain ──
       let voucherCode = null;
-
       if (order.useVoucher && order.voucherCode) {
-        // Voucher reusable — tidak di-expire, bisa dipakai ke talent lain
-        // Reset usedOrder agar bisa dipakai lagi
         try {
           const vSnap = await fsGet(`vouchers/${order.voucherCode}`);
           if (vSnap && vSnap.fields) {
             const vData = fromFirestore(vSnap.fields);
             await fsSet(`vouchers/${order.voucherCode}`, {
               ...vData,
-              used     : false,  // reset — bisa dipakai lagi
+              used     : false,
               usedAt   : null,
               usedOrder: null,
             });
           }
-        } catch(e) { console.error('Reset voucher error:', e.message); }
-        voucherCode = order.voucherCode; // kembalikan kode voucher yang sama
+        } catch(e) { console.error('Reset voucher on reject error:', e.message); }
+        voucherCode = order.voucherCode;
       } else {
         // Buat voucher baru kalau tidak pakai voucher sebelumnya
         voucherCode = generateVoucher();
@@ -159,10 +193,20 @@ module.exports = async (req, res) => {
           used     : false,
           createdAt: new Date().toISOString(),
           reason   : 'rejected',
-          custWa   : order.custWa,
+          custWa   : custWaClean,
           originalOrder: orderId,
         });
       }
+
+      // Activity log
+      try {
+        await fsSet(`activity_logs/al_${Date.now()}_r`, {
+          type       : 'order_rejected',
+          description: `Talent "${order.talentName || order.talentId}" menolak order`,
+          detail     : `Layanan: ${order.service} · Voucher ${voucherCode} direset`,
+          createdAt  : new Date().toISOString()
+        });
+      } catch(e) {}
 
       return res.status(200).json({ success: true, status: 'rejected', voucherCode });
     }
