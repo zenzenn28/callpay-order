@@ -2,8 +2,8 @@
 
 const API_BASE        = 'https://callpay-order-15no.vercel.app';
 let _activeVoucherCode = '';
-let _voucherData       = null; // simpan data voucher yang valid
-const MIDTRANS_CLIENT  = 'Mid-client-Endj0wHvJambaZCs';
+let _voucherData       = null;
+const MIDTRANS_CLIENT  = 'Mid-client-87ffSwFJ7TbDZVeD';
 
 // Normalisasi WA → 62xxx (konsisten dengan server)
 function normalizeWa(wa) {
@@ -22,10 +22,10 @@ function displayWa(wa) {
   return num;
 }
 
-// Load Midtrans Snap
+// Load Midtrans Snap (Production)
 (function() {
   const s = document.createElement('script');
-  s.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+  s.src = 'https://app.midtrans.com/snap/snap.js';
   s.setAttribute('data-client-key', MIDTRANS_CLIENT);
   document.head.appendChild(s);
 })();
