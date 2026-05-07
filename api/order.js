@@ -13,9 +13,18 @@ function formatDuration(minutes) {
   return (Number.isInteger(jam) ? jam : jam.toFixed(1).replace('.', ',')) + ' jam';
 }
 
+// Normalisasi nomor WA → selalu format 62xxx (tanpa +, tanpa spasi)
+function normalizeWa(wa) {
+  if (!wa) return '';
+  let num = String(wa).replace(/\D/g, '');
+  if (num.startsWith('0')) num = '62' + num.slice(1);
+  if (!num.startsWith('62')) num = '62' + num;
+  return num;
+}
+
 // Notif ke talent via Telegram — WA hanya 4 digit terakhir
 async function notifTalent(telegramChatId, service, duration, orderId, custWa) {
-  const last4 = custWa ? ('xxxx-xxxx-' + String(custWa).replace(/\D/g,'').slice(-4)) : '—';
+  const last4 = custWa ? ('xxxx-xxxx-' + String(custWa).slice(-4)) : '—';
   const msg =
     `🔔 <b>Ada Order Masuk!</b>\n\n` +
     `📋 Layanan: <b>${service}</b>\n` +
@@ -31,7 +40,7 @@ async function notifTalent(telegramChatId, service, duration, orderId, custWa) {
 async function notifAgency(adminParam, talentName, service, duration, price, orderId, custWa) {
   const LABELS = { admin1: 'CallPay', admin2: 'SleepcallPay', admin3: 'ScallpayZ' };
   const agencyLabel = LABELS[adminParam] || 'CallPay';
-  let waDisplay = custWa ? String(custWa).replace(/\D/g,'') : '—';
+  let waDisplay = custWa || '—';
   if (waDisplay.startsWith('62')) waDisplay = '0' + waDisplay.slice(2);
   const msg =
     `📥 <b>Order Baru Masuk!</b>\n\n` +
@@ -75,9 +84,40 @@ module.exports = async (req, res) => {
     const vData = fromFirestore(vSnap.fields);
     if (vData.used) return res.status(400).json({ error: 'Kode voucher sudah digunakan' });
 
-    // Nomor WA: dari voucher (prioritas) atau dari body
+    // Normalisasi WA: dari voucher (prioritas) atau dari body — selalu format 62xxx
     const rawWa   = vData.custWa || custWa || '';
-    const cleanWa = rawWa.replace(/\D/g, '');
+    const cleanWa = normalizeWa(rawWa);
+
+    // ── CEK COOLDOWN di server (tidak bisa di-bypass dari frontend) ──
+    if (cleanWa && talentIdClean) {
+      const cooldownKey = `cooldowns/${talentIdClean}_${cleanWa}`;
+      try {
+        const cdSnap = await fsGet(cooldownKey);
+        if (cdSnap && cdSnap.fields) {
+          const cdData    = fromFirestore(cdSnap.fields);
+          const expiresAt = new Date(cdData.expiresAt);
+          const now       = new Date();
+          if (now < expiresAt) {
+            const sisaMs  = expiresAt - now;
+            const sisaMnt = Math.ceil(sisaMs / 60000);
+            const sisaJam = Math.floor(sisaMnt / 60);
+            const sisaMin = sisaMnt % 60;
+            const sisaStr = sisaJam > 0
+              ? `${sisaJam} jam${sisaMin > 0 ? ' ' + sisaMin + ' menit' : ''}`
+              : `${sisaMnt} menit`;
+            return res.status(400).json({
+              error     : `Kamu masih dalam masa cooldown untuk talent ini. Tunggu ${sisaStr} lagi, atau order talent lain.`,
+              cooldown  : true,
+              sisaMenit : sisaMnt,
+              expiresAt : cdData.expiresAt,
+            });
+          }
+        }
+      } catch(e) {
+        console.error('Cooldown check error:', e.message);
+        // Kalau gagal cek cooldown, tetap lanjutkan order (fail-open)
+      }
+    }
 
     // ── Ambil data talent ─────────────────────────────────────
     let talentWa = null, talentTelegramChatId = null;
@@ -90,9 +130,9 @@ module.exports = async (req, res) => {
       }
     } catch(e) { console.error('Fetch talent error:', e.message); }
 
-    const orderId   = generateOrderId();
-    const now       = new Date().toISOString();
-    const expiredAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+    const orderId    = generateOrderId();
+    const now        = new Date().toISOString();
+    const expiredAt  = new Date(Date.now() + 2 * 60 * 1000).toISOString();
     const finalPrice = Number(vData.price) || Number(price) || 0;
 
     const orderData = {
@@ -111,8 +151,8 @@ module.exports = async (req, res) => {
       adminParam : adminParam || 'admin1',
       createdAt  : now,
       expiredAt,
-      talentWa          : talentWa || '',
-      talentTelegramChatId: talentTelegramChatId || '',
+      talentWa             : talentWa || '',
+      talentTelegramChatId : talentTelegramChatId || '',
     };
 
     // Simpan order & tandai voucher terpakai
@@ -130,11 +170,11 @@ module.exports = async (req, res) => {
     }
 
     return res.status(200).json({
-      success  : true,
+      success   : true,
       orderId,
       expiredAt,
       useVoucher: true,
-      price    : finalPrice,
+      price     : finalPrice,
     });
 
   } catch(e) {
