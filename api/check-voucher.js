@@ -1,5 +1,14 @@
 // api/check-voucher.js - Validasi kode voucher berdasarkan nominal
-const { fsGet, fsQuery, fromFirestore } = require('../lib/firebase');
+const { fsGet, fromFirestore } = require('../lib/firebase');
+
+// Normalisasi nomor WA → selalu format 62xxx
+function normalizeWa(wa) {
+  if (!wa) return '';
+  let num = String(wa).replace(/\D/g, '');
+  if (num.startsWith('0')) num = '62' + num.slice(1);
+  if (!num.startsWith('62')) num = '62' + num;
+  return num;
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,7 +16,6 @@ module.exports = async (req, res) => {
   if (!code) return res.status(400).json({ valid: false, error: 'Kode diperlukan' });
 
   try {
-    // Ambil voucher
     const snap = await fsGet(`vouchers/${code.toUpperCase()}`);
     if (!snap || !snap.fields) return res.status(200).json({ valid: false, error: 'Voucher tidak ditemukan' });
     const data = fromFirestore(snap.fields);
@@ -15,26 +23,28 @@ module.exports = async (req, res) => {
 
     const price = Number(data.price) || 0;
 
-    // Ambil pricelist admin1 untuk mapping durasi per layanan
+    // Normalisasi custWa → 62xxx agar konsisten dengan cooldown key
+    const custWaClean = normalizeWa(data.custWa);
+
+    // Ambil pricelist untuk mapping durasi per layanan
     const priceSnap = await fsGet('pricelist/admin1');
-    let durMap = {}; // { NamaLayanan: durasi_menit }
+    let durMap = {};
 
     if (priceSnap && priceSnap.fields) {
       const priceData = fromFirestore(priceSnap.fields);
-      // Untuk setiap layanan, cari durasi yang harganya = price
       Object.entries(priceData).forEach(([svcName, durations]) => {
         if (typeof durations === 'object') {
           const match = Object.entries(durations).find(([, p]) => Number(p) === price);
-          if (match) durMap[svcName] = Number(match[0]); // durasi dalam menit
+          if (match) durMap[svcName] = Number(match[0]);
         }
       });
     }
 
     return res.status(200).json({
-      valid   : true,
+      valid    : true,
       price,
-      custWa  : data.custWa || '',
-      durMap,  // { 'Temen Call': 30, 'Sleepcall': 30, 'Temen Curhat': 20, ... }
+      custWa   : custWaClean,   // selalu 62xxx — dipakai untuk cooldown key
+      durMap,
     });
   } catch(e) {
     console.error('check-voucher error:', e);
