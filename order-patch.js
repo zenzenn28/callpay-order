@@ -5,6 +5,23 @@ let _activeVoucherCode = '';
 let _voucherData       = null; // simpan data voucher yang valid
 const MIDTRANS_CLIENT  = 'Mid-client-Endj0wHvJambaZCs';
 
+// Normalisasi WA → 62xxx (konsisten dengan server)
+function normalizeWa(wa) {
+  if (!wa) return '';
+  let num = String(wa).replace(/\D/g, '');
+  if (num.startsWith('0')) num = '62' + num.slice(1);
+  if (!num.startsWith('62')) num = '62' + num;
+  return num;
+}
+
+// Format WA untuk display → 08xxx
+function displayWa(wa) {
+  const num = normalizeWa(wa);
+  if (!num) return '';
+  if (num.startsWith('62')) return '0' + num.slice(2);
+  return num;
+}
+
 // Load Midtrans Snap
 (function() {
   const s = document.createElement('script');
@@ -140,9 +157,8 @@ window.checkVoucher = async function() {
       _activeVoucherCode = code;
       _voucherData       = data;
 
-      // Format nomor WA
-      let waDisplay = data.custWa ? data.custWa.toString().replace(/\D/g,'') : '';
-      if (waDisplay.startsWith('62')) waDisplay = '0' + waDisplay.slice(2);
+      // Format nomor WA untuk display (08xxx) — data.custWa sudah 62xxx dari server
+      const waDisplay = displayWa(data.custWa);
 
       // Tampilkan status berhasil
       msg.style.background = 'rgba(61,214,140,.06)';
@@ -175,8 +191,8 @@ window.checkVoucher = async function() {
       `;
 
       // Cek cooldown untuk talent ini
-      const talentIdStr = String(window.activeTalent?._docId || window.activeTalent?.id || '');
-      const waForCd     = data.custWa ? String(data.custWa).replace(/\D/g,'') : '';
+      const talentIdStr = String(window.activeTalent?._docId || window.activeTalent?.id || '').toLowerCase().trim();
+      const waForCd     = normalizeWa(data.custWa);   // selalu 62xxx agar cocok dengan key di Firestore
       if (talentIdStr && waForCd) {
         try {
           const cdRes  = await fetch(`${API_BASE}/api/check-cooldown?talentId=${encodeURIComponent(talentIdStr)}&custWa=${encodeURIComponent(waForCd)}`);
@@ -357,7 +373,7 @@ async function doOrder() {
   const svcLabel = _selectedSvcLabel;
   const durInt   = _selectedDur || 0;
   const price    = Number(vd?.price) || 0;
-  const custWa   = vd?.custWa ? String(vd.custWa).replace(/\D/g,'') : '';
+  const custWa   = normalizeWa(vd?.custWa);   // selalu 62xxx
 
   const btn = document.getElementById('modal-wa-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
@@ -365,7 +381,7 @@ async function doOrder() {
   // Cek cooldown — hanya berlaku untuk talent yang sama
   if (custWa) {
     try {
-      const talentIdStr = String(talent._docId || talent.id);
+      const talentIdStr = String(talent._docId || talent.id).toLowerCase().trim();
       const cdRes  = await fetch(`${API_BASE}/api/check-cooldown?talentId=${encodeURIComponent(talentIdStr)}&custWa=${encodeURIComponent(custWa)}`);
       const cdData = await cdRes.json();
       if (cdData.cooldown) {
@@ -409,8 +425,29 @@ async function doOrder() {
     const data = await res.json();
 
     if (!data.success) {
+      if (btn) { btn.disabled = false; btn.textContent = '🎀 Pesan Sekarang'; }
+
+      // Jika server return cooldown error → tampilkan pesan cooldown, bukan alert
+      if (data.cooldown) {
+        const sisaJam = Math.floor((data.sisaMenit || 60) / 60);
+        const sisaMin = (data.sisaMenit || 60) % 60;
+        const sisaStr = sisaJam > 0
+          ? `${sisaJam} jam${sisaMin > 0 ? ' ' + sisaMin + ' menit' : ''}`
+          : `${data.sisaMenit || 60} menit`;
+        const msgEl = document.getElementById('voucher-msg');
+        if (msgEl) {
+          msgEl.style.display    = 'block';
+          msgEl.style.background = 'rgba(255,184,0,.06)';
+          msgEl.style.border     = '1px solid rgba(255,184,0,.25)';
+          msgEl.innerHTML = `
+            <div style="font-size:.82rem;font-weight:800;color:#FFB800;margin-bottom:4px">⏳ Talent ini menolak orderanmu</div>
+            <div style="font-size:.78rem;font-weight:600;color:rgba(240,235,248,.6)">Tunggu <b style="color:#FFB800">${sisaStr}</b> sebelum order ke talent ini lagi, atau pilih talent lain.</div>
+          `;
+        }
+        return;
+      }
+
       alert('Gagal: ' + (data.error || 'Terjadi kesalahan'));
-      if (btn) { btn.disabled = false; btn.textContent = 'Pesan Sekarang'; }
       return;
     }
 
