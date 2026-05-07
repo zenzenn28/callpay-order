@@ -88,6 +88,25 @@ module.exports = async (req, res) => {
     const rawWa   = vData.custWa || custWa || '';
     const cleanWa = normalizeWa(rawWa);
 
+    // ── CEK BLACKLIST GLOBAL (admin) ─────────────────────────
+    try {
+      const gbSnap = await fsGet(`blacklist_global/${cleanWa}`);
+      if (gbSnap && gbSnap.fields) {
+        const gbData = fromFirestore(gbSnap.fields);
+        if (gbData.active !== false) {
+          return res.status(403).json({ error: 'Akun kamu tidak bisa melakukan order. Hubungi admin untuk informasi lebih lanjut.', blocked: true });
+        }
+      }
+    } catch(e) { console.error('Global blacklist check error:', e.message); }
+
+    // ── CEK BLACKLIST TALENT ──────────────────────────────────
+    try {
+      const tlBlSnap = await fsGet(`talents/${talentIdClean}/blacklist/${cleanWa}`);
+      if (tlBlSnap && tlBlSnap.fields) {
+        return res.status(403).json({ error: 'Maaf, kamu tidak bisa order talent ini. Silahkan order talent lain ya 😊', blocked: true });
+      }
+    } catch(e) { console.error('Talent blacklist check error:', e.message); }
+
     // ── CEK COOLDOWN di server (tidak bisa di-bypass dari frontend) ──
     if (cleanWa && talentIdClean) {
       const cooldownKey = `cooldowns/${talentIdClean}_${cleanWa}`;
