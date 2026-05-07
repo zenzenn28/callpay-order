@@ -212,6 +212,40 @@ window.checkVoucher = async function() {
             return; // stop — jangan tampilkan pilihan layanan
           }
         } catch(e) { /* lanjut kalau gagal cek */ }
+
+        // Cek blacklist talent (apakah WA ini di-blacklist oleh talent yang dipilih)
+        try {
+          const blRes  = await fetch(`${API_BASE}/api/check-blacklist?talentId=${encodeURIComponent(talentIdStr)}&custWa=${encodeURIComponent(waForCd)}`);
+          const blData = await blRes.json();
+          if (blData.blocked) {
+            msg.style.background = 'rgba(255,92,92,.06)';
+            msg.style.border      = '1px solid rgba(255,92,92,.25)';
+            msg.style.display     = 'block';
+            msg.innerHTML = `
+              <div style="font-size:.82rem;font-weight:800;color:#FF5C5C;margin-bottom:4px">🚫 Maaf, kamu tidak bisa order talent ini</div>
+              <div style="font-size:.78rem;font-weight:600;color:rgba(240,235,248,.6)">Silahkan order talent lain ya 😊</div>
+            `;
+            if (btnGun) { btnGun.disabled = false; btnGun.style.opacity = '1'; }
+            return;
+          }
+        } catch(e) { /* lanjut kalau gagal cek */ }
+
+        // Cek blacklist global (diblacklist oleh admin — tidak bisa order siapapun)
+        try {
+          const gbRes  = await fetch(`${API_BASE}/api/check-blacklist?custWa=${encodeURIComponent(waForCd)}&global=1`);
+          const gbData = await gbRes.json();
+          if (gbData.blocked) {
+            msg.style.background = 'rgba(255,92,92,.06)';
+            msg.style.border      = '1px solid rgba(255,92,92,.25)';
+            msg.style.display     = 'block';
+            msg.innerHTML = `
+              <div style="font-size:.82rem;font-weight:800;color:#FF5C5C;margin-bottom:4px">🚫 Akun kamu tidak bisa melakukan order</div>
+              <div style="font-size:.78rem;font-weight:600;color:rgba(240,235,248,.6)">Hubungi admin untuk informasi lebih lanjut.</div>
+            `;
+            if (btnGun) { btnGun.disabled = false; btnGun.style.opacity = '1'; }
+            return;
+          }
+        } catch(e) { /* lanjut kalau gagal cek */ }
       }
 
       // Kunci input voucher
